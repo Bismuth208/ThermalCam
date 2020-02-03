@@ -10,28 +10,7 @@
 //  (F) DZL 2016
 //*******************************************************
 
-#define TFT_CS   4  // goes to TFT CS
-#define TFT_DC   5  // goes to TFT DC
 
-// for soft SPI
-//#define TFT_MOSI 13  // goes to TFT MOSI
-//#define TFT_CLK  14  // goes to TFT SCK/CLK
-//#define TFT_RST  26   // ESP RST to TFT RESET
-//#define TFT_MISO 12
-
-// ----------------------------------------------------------------------
-
-// use first channel of 16 channels (started from zero)
-#define LEDC_CHANNEL_0     0
-
-// use 13 bit precission for LEDC timer
-#define LEDC_TIMER_13_BIT  13
-
-// use 5000 Hz as a LEDC base frequency
-#define LEDC_BASE_FREQ     30
-
-// fade LED PIN (replace with LED_BUILTIN constant for built-in LED)
-#define LED_PIN            32
 
 // ----------------------------------------------------------------------
 
@@ -46,14 +25,25 @@
 #include <MLX90640_API.h>
 #include <MLX90640_I2C_Driver.h>
 
-#include "FreeRTOS_helper.h"
+#include <FreeRTOS_helper.hpp>
+
 #include "common.h"
+#include "thermal_cam_pins.h"
 
 #include "Duck_logo_Iron_Gradient.h"
 
+// ----------------------------------------------------------------------
+// use first channel of 16 channels (started from zero)
+#define LEDC_CHANNEL_0     0
+
+// use 13 bit precission for LEDC timer
+#define LEDC_TIMER_13_BIT  13
+
+// use 5000 Hz as a LEDC base frequency
+#define LEDC_BASE_FREQ     30
+
 
 // ----------------------------------------------------------------------
-
 const byte MLX90640_address = 0x33; //Default 7-bit unshifted address of the MLX90640
 #define TA_SHIFT 8 //Default shift for MLX90640 in open air
 
@@ -174,7 +164,7 @@ void setup()
   vDrawProgressBar(ucBootProgress);
   ++ucBootProgress;
   
-  Wire.begin(21, 15, 400000); //SDA, SCL and increase I2C clock speed to 400kHz
+  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, 400000); //SDA, SCL and increase I2C clock speed to 400kHz
   
   /*
     if (isConnected() == false)
