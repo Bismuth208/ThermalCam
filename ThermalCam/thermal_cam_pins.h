@@ -24,8 +24,18 @@
 //#define TFT_MISO 19
 
 // ----------------------------------------------------------------------
+//#define TFT_SD_SPI_CARD_CS_PIN ??
+//#define MAKE_SD_THERMOGRAM_PIN ?? 
+
+// ----------------------------------------------------------------------
 // fade LED PIN (replace with LED_BUILTIN constant for built-in LED)
 #define LED_PIN            32
+
+// ----------------------------------------------------------------------
+#define HI_PRECISION_BTN_PIN 34
+
+// ----------------------------------------------------------------------
+//#define PALETTE_COLORS_CHANGE_PIN ??
 
 
 #endif /* _thermal_cam_pins_H */

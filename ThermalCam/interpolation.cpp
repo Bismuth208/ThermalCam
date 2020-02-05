@@ -3,6 +3,8 @@
  * http://blog.dzl.dk/2019/06/08/compact-gaussian-interpolation-for-small-displays/
  * http://blog.dzl.dk/2019/06/08/cheap-diy-thermal-imager/
  *
+ * Quick and dirty thermal imager code
+ * (F) DZL 2016
  */
 
 #include "common.h"
@@ -98,7 +100,7 @@ void vGridInit(void)
   xGrid.ulScreenW = tft.height();
   // ?
   xGrid.pfScreenData = &xGrid.buff[32];
-  xGrid.buff[500] = 40;
+  xGrid.buff[500] = 40; // why thi is here and what it does !?
 
   xGrid.fEmissivity = 0.93;
 }
@@ -112,60 +114,107 @@ void vGridPlace(int px, int py, int w, int h)
 
 void vGridMakeAvg(void)
 {
-  memset(&mlx90640To[0], 0x00, sizeof(mlx90640To));
-  
+  float f_high = -1000;
+  float f_low = 1000;
+  float f_tmp_mlx_val = 0;
+
   for (uint32_t j = 0; j < IR_SENSOR_DATA_FRAME_SIZE; j++) {
     for (uint32_t i = 0; i < IR_ADC_OVERSAMPLING_COUNT; i++) {
-      mlx90640To[j] += fMLX90640Oversampling[i][j];
+      f_tmp_mlx_val += fMLX90640Oversampling[i][j];
     }
 
-    mlx90640To[j] = (mlx90640To[j] / IR_ADC_OVERSAMPLING_COUNT);
-  }
-}
+    f_tmp_mlx_val = (f_tmp_mlx_val / IR_ADC_OVERSAMPLING_COUNT);
 
-void vGridFindMinMax(void)
-{
-  float high = -1000;
-  float low = 1000;
-  
-  for (int x = 0; x < IR_SENSOR_DATA_FRAME_SIZE; x++) {    
-    float t = (float) mlx90640To[x];
-    if (t > high)
-      high = t;
-    if (t < low)
-      low = t;
+    if (f_tmp_mlx_val > f_high) {
+      f_high = f_tmp_mlx_val;
+    }
+    if (f_tmp_mlx_val < f_low) {
+      f_low = f_tmp_mlx_val;
+    }
 
-    xGrid.pfScreenData[x] =  t;
+    xGrid.pfScreenData[j] = f_tmp_mlx_val;
   }
+
 
   // calculate avarage temp in center
   float t = 0;
-  t += mlx90640To[335];
-  t += mlx90640To[336];
+  t += xGrid.pfScreenData[335];
+  t += xGrid.pfScreenData[336];
 
-  t += mlx90640To[366];
-  t += mlx90640To[367];
-  t += mlx90640To[368];
-  t += mlx90640To[369];
+  t += xGrid.pfScreenData[366];
+  t += xGrid.pfScreenData[367];
+  t += xGrid.pfScreenData[368];
+  t += xGrid.pfScreenData[369];
 
-  t += mlx90640To[398];
-  t += mlx90640To[399];
-  t += mlx90640To[400];
-  t += mlx90640To[401];
+  t += xGrid.pfScreenData[398];
+  t += xGrid.pfScreenData[399];
+  t += xGrid.pfScreenData[400];
+  t += xGrid.pfScreenData[401];
 
-  t += mlx90640To[431];
-  t += mlx90640To[432];
+  t += xGrid.pfScreenData[431];
+  t += xGrid.pfScreenData[432];
   t /= 12.0;
 
   xGrid.fAvgCenter = t;
 
   // I have no idea what this thing is doing here...
 #if 0
-  xGrid.fHigh = xGrid.high * 0.9 + 0.1 * high * 1.2;
-  xGrid.fLow = xGrid.low * 0.9 + 0.1 * (1.0/1.2) * low;
+  xGrid.fHigh = xGrid.high * 0.9 + 0.1 * f_high * 1.2;
+  xGrid.fLow = xGrid.low * 0.9 + 0.1 * (1.0/1.2) * f_low;
 #else
-  xGrid.fHigh = high;
-  xGrid.fLow = low;
+  xGrid.fHigh = f_high;
+  xGrid.fLow = f_low;
+#endif
+}
+
+void vGridMakeFast(void)
+{
+  float f_high = -1000;
+  float f_low = 1000;
+  float f_tmp_mlx_val = 0;
+
+  for (uint32_t j = 0; j < IR_SENSOR_DATA_FRAME_SIZE; j++) {
+    f_tmp_mlx_val = fMLX90640Oversampling[0][j];
+
+    if (f_tmp_mlx_val > f_high) {
+      f_high = f_tmp_mlx_val;
+    }
+    if (f_tmp_mlx_val < f_low) {
+      f_low = f_tmp_mlx_val;
+    }
+
+    xGrid.pfScreenData[j] = f_tmp_mlx_val;
+  }
+
+
+  // calculate avarage temp in center
+  float t = 0;
+  t += xGrid.pfScreenData[335];
+  t += xGrid.pfScreenData[336];
+
+  t += xGrid.pfScreenData[366];
+  t += xGrid.pfScreenData[367];
+  t += xGrid.pfScreenData[368];
+  t += xGrid.pfScreenData[369];
+
+  t += xGrid.pfScreenData[398];
+  t += xGrid.pfScreenData[399];
+  t += xGrid.pfScreenData[400];
+  t += xGrid.pfScreenData[401];
+
+  t += xGrid.pfScreenData[431];
+  t += xGrid.pfScreenData[432];
+  t /= 12.0;
+
+  xGrid.fAvgCenter = t;
+
+  // I have no idea what this thing is doing here...
+#if 0
+  xGrid.fHigh = xGrid.high * 0.9 + 0.1 * f_high * 1.2;
+  xGrid.fLow = xGrid.low * 0.9 + 0.1 * (1.0/1.2) * f_low;
+#else
+  xGrid.fHigh = f_high;
+  xGrid.fLow = f_low;
 #endif
 }
 

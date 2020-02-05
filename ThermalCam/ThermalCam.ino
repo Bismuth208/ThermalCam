@@ -1,17 +1,3 @@
-//*******************************************************
-//  Quick and dirty thermal imager code
-//  Runs on ESP32 (LOLIN32), uses 128x128 OLED screen
-//  from adafruit:
-//  https://learn.adafruit.com/adafruit-1-5-color-oled-breakout-board/downloads-and-links
-//  and MLX90640 thermal imager chip.
-//
-//  CODE IS A MESS!!! Only use for reference
-//  MOST MENUS DOES NOTHING!
-//  (F) DZL 2016
-//*******************************************************
-
-
-
 // ----------------------------------------------------------------------
 
 #include <WiFi.h>
@@ -56,7 +42,6 @@ void vGetFrameDataTask(void *pvArg);
 
 // ----------------------------------------------------------------------
 
-float mlx90640To[IR_SENSOR_DATA_FRAME_SIZE];
 float fMLX90640Oversampling[IR_ADC_OVERSAMPLING_COUNT][IR_SENSOR_DATA_FRAME_SIZE];
 uint32_t ulOversamplingPos = 0;
 
@@ -70,6 +55,8 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS, TFT_DC, -1 /*, TFT_MOSI, TFT_CLK ,
 // ----------------------------------------------------------------------
 Task AppMainTask(vAppMainTask, 2048, 1, 0);
 Task GetFrameDataTask(vGetFrameDataTask, 2048, 1, 1); // on WiFi/Network core does not work...
+
+Mutex MLX90640Mutex;
 
 Queue <IR_CAM_DATA_FRAMES, IrCamDataFrame_t*> mlx90640FrameInOutQueue; // from global to decoder
 Queue <IR_CAM_DATA_FRAMES, IrCamDataFrame_t*> mlx90640FrameOutInQueue; // from decoder to printer task
@@ -119,6 +106,18 @@ void vDrawLogo(void)
 #endif
 }
 
+// ----------------------------------------------------------------------
+void vMLX90640_EnableHiQualityMode(BaseType_t xEnable)
+{
+  MLX90640Mutex.lock();
+  
+  MLX90640_SetRefreshRate(MLX90640_address, (xEnable == pdTRUE) ? IR_SAMPLING_HI_Q : IR_SAMPLING_LOW_Q);
+  MLX90640_SetResolution(MLX90640_address, (xEnable == pdTRUE) ? IR_SAMPLING_RES_HI_Q : IR_SAMPLING_RES_LOW_Q);
+
+  xGrid.xHiPrecisionModeIsEn = xEnable;
+
+  MLX90640Mutex.unlock();
+}
 
 // ----------------------------------------------------------------------
 void setup()
@@ -132,6 +131,9 @@ void setup()
   ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_13_BIT);
   ledcAttachPin(LED_PIN, LEDC_CHANNEL_0);
   ledcAnalogWrite(LEDC_CHANNEL_0, 255);
+
+  // ----------------------------------------------------------------------
+  pinMode(HI_PRECISION_BTN_PIN, INPUT_PULLUP);
   
   // ----------------------------------------------------------------------
   // Init TFT chip
@@ -177,19 +179,20 @@ void setup()
   int status;
   uint16_t eeMLX90640[832];
   status = MLX90640_DumpEE(MLX90640_address, eeMLX90640);
-  if (status != 0)
+  if (status != 0) {
     Serial.printf("Failed to load system parameters %d \n", status);
+  }
 
   status = MLX90640_ExtractParameters(eeMLX90640, &mlx90640);
-  if (status != 0)
+  if (status != 0) {
     Serial.printf("Parameter extraction failed %d \n", status);
+  }
 
   // Once params are extracted
-  // we can release eeMLX90640 array and we can increase to 1MHz
-  Wire.setClock(1000000);
+  // we can release eeMLX90640 array and we can increase to 800kHz
+  Wire.setClock(800000);
 
-  MLX90640_SetRefreshRate(MLX90640_address, MLX90640_SPEED_4_HZ);
-  MLX90640_SetResolution(MLX90640_address, MLX90640_RESOLUTION_19BIT);
+  vMLX90640_EnableHiQualityMode(pdFALSE);
 //  Serial.printf("Cur res %d\n", MLX90640_GetCurResolution(MLX90640_address));
 
   // ----------------------------------------------------------------------
@@ -200,7 +203,7 @@ void setup()
   vGridSetPaletteType(IR_PALETTE_TYPE_IRONBOW);
 
   // ----------------------------------------------------------------------
-  // create memory pool for faster data frames from camera
+  // create memory pool to get data frames a lot faster from camera
   IrCamDataFrame_t *pxIrCamDataFrame = NULL;
   for (uint32_t i = 0; i < IR_CAM_DATA_FRAMES; i++) {
     pxIrCamDataFrame = (IrCamDataFrame_t *) malloc(sizeof(IrCamDataFrame_t));
@@ -230,6 +233,8 @@ void vDrawMeasurement(void)
 
   vPrintAt(5, 116, "E");
   vPrintAt(12, 116, xGrid.fEmissivity);
+
+  vPrintAt(140, 116, (xGrid.xHiPrecisionModeIsEn == pdTRUE) ? IR_SAMPLING_HI_Q_TEXT : IR_SAMPLING_LOW_Q_TEXT);
 }
 
 // Immitation of serious work
@@ -247,9 +252,13 @@ void vStartColdReadings(IrCamDataFrame_t *pxIrCamDataFrame)
 
   mlx90640FrameInOutQueue.receive(&pxIrCamDataFrame);
   for (int i = ucBootProgress; i < IR_SENSOR_COLD_READS_NUM; i++) {
+    MLX90640Mutex.lock();
+    
     MLX90640_GetFrameData(MLX90640_address, &pxIrCamDataFrame->mlx90640Frame[0]);
     MLX90640_CalculateTo(&pxIrCamDataFrame->mlx90640Frame[0], &mlx90640, xGrid.fEmissivity, tr, &fMLX90640Oversampling[ulOversamplingPos][0]);
 
+    MLX90640Mutex.unlock();
+    
     ++ulOversamplingPos;
 #if 1
     if (ulOversamplingPos > IR_ADC_OVERSAMPLING_COUNT) {
@@ -274,7 +283,7 @@ void vGetFrameDataTask(void *pvArg)
   IrCamDataFrame_t *pxIrCamDataFrame = NULL;
 
   // wait for a start
-  while(GetFrameDataTask.waitSignal() == 0);
+  GetFrameDataTask.waitSignal();
 
   // prepare data by cold read
   vStartColdReadings(pxIrCamDataFrame);
@@ -286,12 +295,14 @@ void vGetFrameDataTask(void *pvArg)
 
   for (;;) {
     while (mlx90640FrameInOutQueue.receive(&pxIrCamDataFrame) == pdFALSE);
+    MLX90640Mutex.lock();
     
     MLX90640_GetFrameData(MLX90640_address, &pxIrCamDataFrame->mlx90640Frame[0]);
-
+    
+    MLX90640Mutex.unlock();
     while (mlx90640FrameOutInQueue.send(&pxIrCamDataFrame) == pdFALSE);
 
-    vTaskDelay(1);
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
 
@@ -299,12 +310,15 @@ void vAppMainTask(void *pvArg)
 {
   (void) pvArg;
 
+#if 0
   float vdd = 0;
   float Ta = 0;
+#endif
   float tr = -8; //Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
 
   IrCamDataFrame_t *pxIrCamDataFrame = NULL;
-
+  BaseType_t xHiResBtnState = pdFALSE;
+  
   for (;;) {
     if (!mlx90640FrameOutInQueue.isEmpty())
     {
@@ -316,23 +330,37 @@ void vAppMainTask(void *pvArg)
       tr = Ta - TA_SHIFT;
   #endif
 
-      MLX90640_CalculateTo(&pxIrCamDataFrame->mlx90640Frame[0], &mlx90640, xGrid.fEmissivity, tr, &fMLX90640Oversampling[ulOversamplingPos][0]);
+      if (xGrid.xHiPrecisionModeIsEn == pdTRUE) {
+        MLX90640_CalculateTo(&pxIrCamDataFrame->mlx90640Frame[0], &mlx90640, xGrid.fEmissivity, tr, &fMLX90640Oversampling[ulOversamplingPos][0]);
+      } else {
+        MLX90640_CalculateTo(&pxIrCamDataFrame->mlx90640Frame[0], &mlx90640, xGrid.fEmissivity, tr, &fMLX90640Oversampling[0][0]); 
+      }
 
       while (mlx90640FrameInOutQueue.send(&pxIrCamDataFrame) == pdFALSE); // return memory pointer back to decoder
 
 //      MLX90640_BadPixelsCorrection(&mlx90640.brokenPixels[0], &fMLX90640Oversampling[ulOversamplingPos][0], 1, &mlx90640);
 //      MLX90640_BadPixelsCorrection(&mlx90640.outlierPixels[0], &fMLX90640Oversampling[ulOversamplingPos][0], 1, &mlx90640);
 
-      ++ulOversamplingPos;
-      if (ulOversamplingPos > IR_ADC_OVERSAMPLING_COUNT) {
-        ulOversamplingPos = 0;
-      }
+      // now, calculate and draw everything
+      if (xGrid.xHiPrecisionModeIsEn == pdTRUE) {
+        vGridMakeAvg();
 
-      // now, calculate and deaw everything
-      vGridMakeAvg();
-      vGridFindMinMax();
+        ++ulOversamplingPos;
+        if (ulOversamplingPos > IR_ADC_OVERSAMPLING_COUNT) {
+          ulOversamplingPos = 0;
+        }
+      } else {
+        vGridMakeFast();
+      }
       vGridDrawInterpolated();
       vDrawMeasurement();
+    }
+
+    // now check hi-res button
+    xHiResBtnState = (BaseType_t) digitalRead(HI_PRECISION_BTN_PIN);
+
+    if (xHiResBtnState != xGrid.xHiPrecisionModeIsEn) {
+      vMLX90640_EnableHiQualityMode(xHiResBtnState);
     }
 
     vTaskDelay(1);
@@ -341,6 +369,6 @@ void vAppMainTask(void *pvArg)
 
 // this poor function not used at all
 void loop()
-{
+{  
   taskYIELD();
 }

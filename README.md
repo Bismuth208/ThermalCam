@@ -15,7 +15,7 @@ Yet another ESP32 Thermal Camera
 - 10x oversampling for a pure smoothie;
 - Gauss interpolation 2x (up to 64x48)px;
 - ~can save raw data on SD card to process on Desktop;~
-- ~HiQ mode via button for less noisy pics (1Hz speed);~
+- HiQ mode via button for less noisy pics (4Hz speed);
 - two color modes: grayscale and normal thermogram;
 - min, max and average temp show;
 - more or less clean code without magic numbers.
