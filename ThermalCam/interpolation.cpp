@@ -22,8 +22,6 @@ uint16_t usPaletteColors[IR_CAM_MAX_COLORS];
 
 
 // ----------------------------------------------------------------------
-Grid_t xGrid;
-
 const int offset[4][9] = {
   { -33, -32, -32,
     -1 , 0  , 0,
@@ -112,30 +110,9 @@ void vGridPlace(int px, int py, int w, int h)
   xGrid.ulScreenH = h;
 }
 
-void vGridMakeAvg(void)
+// ----------------------------------------------------------------------
+void vGridFindMaxMinAvg(float f_high, float f_low)
 {
-  float f_high = -1000;
-  float f_low = 1000;
-  float f_tmp_mlx_val = 0;
-
-  for (uint32_t j = 0; j < IR_SENSOR_DATA_FRAME_SIZE; j++) {
-    for (uint32_t i = 0; i < IR_ADC_OVERSAMPLING_COUNT; i++) {
-      f_tmp_mlx_val += fMLX90640Oversampling[i][j];
-    }
-
-    f_tmp_mlx_val = (f_tmp_mlx_val / IR_ADC_OVERSAMPLING_COUNT);
-
-    if (f_tmp_mlx_val > f_high) {
-      f_high = f_tmp_mlx_val;
-    }
-    if (f_tmp_mlx_val < f_low) {
-      f_low = f_tmp_mlx_val;
-    }
-
-    xGrid.pfScreenData[j] = f_tmp_mlx_val;
-  }
-
-
   // calculate avarage temp in center
   float t = 0;
   t += xGrid.pfScreenData[335];
@@ -167,55 +144,49 @@ void vGridMakeAvg(void)
 #endif
 }
 
-void vGridMakeFast(void)
+void vGridMakeAvg(void)
 {
   float f_high = -1000;
   float f_low = 1000;
   float f_tmp_mlx_val = 0;
 
-  for (uint32_t j = 0; j < IR_SENSOR_DATA_FRAME_SIZE; j++) {
-    f_tmp_mlx_val = fMLX90640Oversampling[0][j];
+  if (xGrid.xHiPrecisionModeIsEn == pdTRUE) {
+    for (uint32_t j = 0; j < IR_SENSOR_DATA_FRAME_SIZE; j++) {
+      for (uint32_t i = 0; i < IR_ADC_OVERSAMPLING_COUNT; i++) {
+        f_tmp_mlx_val += fMLX90640Oversampling[i][j];
+      }
 
-    if (f_tmp_mlx_val > f_high) {
-      f_high = f_tmp_mlx_val;
+      f_tmp_mlx_val = (f_tmp_mlx_val / IR_ADC_OVERSAMPLING_COUNT);
+  
+      if (f_tmp_mlx_val > f_high) {
+        f_high = f_tmp_mlx_val;
+      }
+      if (f_tmp_mlx_val < f_low) {
+        f_low = f_tmp_mlx_val;
+      }
+  
+      xGrid.pfScreenData[j] = f_tmp_mlx_val;
+      f_tmp_mlx_val = 0;
     }
-    if (f_tmp_mlx_val < f_low) {
-      f_low = f_tmp_mlx_val;
+  } else {
+    // smaaal implementation of circular buffer...
+    uint32_t ulPos = (IR_ADC_OVERSAMPLING_COUNT + xGrid.ulOversamplingPos - 1) % IR_ADC_OVERSAMPLING_COUNT;
+    
+    for (uint32_t j = 0; j < IR_SENSOR_DATA_FRAME_SIZE; j++) {
+      f_tmp_mlx_val = fMLX90640Oversampling[ulPos][j];
+  
+      if (f_tmp_mlx_val > f_high) {
+        f_high = f_tmp_mlx_val;
+      }
+      if (f_tmp_mlx_val < f_low) {
+        f_low = f_tmp_mlx_val;
+      }
+  
+      xGrid.pfScreenData[j] = f_tmp_mlx_val;
     }
-
-    xGrid.pfScreenData[j] = f_tmp_mlx_val;
   }
 
-
-  // calculate avarage temp in center
-  float t = 0;
-  t += xGrid.pfScreenData[335];
-  t += xGrid.pfScreenData[336];
-
-  t += xGrid.pfScreenData[366];
-  t += xGrid.pfScreenData[367];
-  t += xGrid.pfScreenData[368];
-  t += xGrid.pfScreenData[369];
-
-  t += xGrid.pfScreenData[398];
-  t += xGrid.pfScreenData[399];
-  t += xGrid.pfScreenData[400];
-  t += xGrid.pfScreenData[401];
-
-  t += xGrid.pfScreenData[431];
-  t += xGrid.pfScreenData[432];
-  t /= 12.0;
-
-  xGrid.fAvgCenter = t;
-
-  // I have no idea what this thing is doing here...
-#if 0
-  xGrid.fHigh = xGrid.high * 0.9 + 0.1 * f_high * 1.2;
-  xGrid.fLow = xGrid.low * 0.9 + 0.1 * (1.0/1.2) * f_low;
-#else
-  xGrid.fHigh = f_high;
-  xGrid.fLow = f_low;
-#endif
+  vGridFindMaxMinAvg(f_high, f_low);
 }
 
 void vGridDrawInterpolated(void)
@@ -224,7 +195,8 @@ void vGridDrawInterpolated(void)
   int dx = xGrid.ulScreenW / IR_SENSOR_MATRIX_2W;
   int dy = xGrid.ulScreenH / IR_SENSOR_MATRIX_2H;
 
-  for (int i = 0; i < (IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H); i++) {
+  // down frame clip
+  for (int i = 0; i < (IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W); i++) {
     pix = 0;
     
     int sourceAddress = ((i >> 1) & 0x1f) + ((i & 0xffffff80) >> 2);
@@ -233,6 +205,7 @@ void vGridDrawInterpolated(void)
     for (int z = 0; z < IR_INTERPOLATION_K_WEIGHTS; z++) {
       pix += fKernelWeights[z] * (float) xGrid.pfScreenData[sourceAddress + offset[q][z]];
     }
+    
     int x = i & 0x0000003f;
     int y = i >> 6;
     int v = map(pix, xGrid.fLow, xGrid.fHigh, 0, IR_CAM_MAX_COLORS);
@@ -246,10 +219,8 @@ void vGridDrawInterpolated(void)
     }
 #endif
 
-    // up, down and right frame clip
-    if ( (i < (IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W)) 
-      && (i > (IR_SENSOR_MATRIX_2W))
-      && ( ( i % IR_SENSOR_MATRIX_2W) != 0) )
+    // down frame clip    
+//    if (i < (IR_SENSOR_MATRIX_W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W))
     {
       // also make horizontal flip
       tft.fillRect(xGrid.ulScreenW - (x*2) + xGrid.ulScreenX, (y*2) + xGrid.ulScreenY, dx, dy, usPaletteColors[v]);
@@ -257,5 +228,13 @@ void vGridDrawInterpolated(void)
 
     // origin size; Debug sensor
 //    tft.drawPixel(x + xGrid.ulScreenX, y + xGrid.ulScreenY, usPaletteColors[v]);
+//    usFrameBuffer[i] = usPaletteColors[v];
   }
+
+#if 0
+  tft.startWrite();
+  tft.setAddrWindow(xGrid.ulScreenX, xGrid.ulScreenY, IR_SENSOR_MATRIX_2W, IR_SENSOR_MATRIX_2H);
+  tft.writePixels(&usFrameBuffer[0], IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H);
+  tft.endWrite();
+#endif
 }
