@@ -1,8 +1,6 @@
 #ifndef _IR_IRONBOW_PALETTE_H
 #define _IR_IRONBOW_PALETTE_H
 
-#define IR_CAM_MAX_COLORS 250
-
 
 // FIXME: placing arrays in header is baaad !
 const uint8_t ucIrIronbowPaletteData[IR_CAM_MAX_COLORS][3] = {

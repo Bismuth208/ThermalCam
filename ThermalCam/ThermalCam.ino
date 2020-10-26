@@ -4,6 +4,12 @@
 #include <SPI.h>
 #include <Wire.h>
 
+#include <FS.h>
+#include <SD.h>
+
+#include <SPIFFS.h>
+
+
 #include "common.h"
 #include "thermal_cam_pins.h"
 
@@ -11,8 +17,6 @@
 void setup()
 {
   Serial.begin(115200);
-  WiFi.mode(WIFI_OFF);
-  btStop();
   
   // ----------------------------------------------------------------------
   // Setup timer and attach timer to a led pin for TFT backlight
@@ -21,7 +25,7 @@ void setup()
   ledcAnalogWrite(LEDC_CHANNEL_0, 255);
 
   // ----------------------------------------------------------------------
-  pinMode(HI_PRECISION_BTN_PIN, INPUT_PULLUP);
+  pinMode(OPT_KEY1_PIN, INPUT_PULLUP);
   
   // ----------------------------------------------------------------------
   // Init TFT chip
@@ -44,11 +48,42 @@ void setup()
 
   vPrintAt(100, 90, VERSION_STR); // version build
 
+  vDrawLogo();
+
+  if (digitalRead(OPT_KEY1_PIN) == LOW) {
+    AppMainTask.stop();
+    GetFrameDataTask.stop();
+
+    btStop();
+
+    start_wi_fi();
+    initWebServer();
+
+    // show to user what ThermalCam in OTA Mode
+    vPrintAt(20, 90, OTA_STR);
+  } else {
+    WiFi.mode(WIFI_OFF);
+    btStop();
+
+    normal_init();
+  }
+}
+
+// this poor function not used at all
+void loop()
+{  
+  taskYIELD();
+}
+
+// ----------------------------------------------------------------------
+void normal_init(void)
+{
+  // ----------------------------------------------------------------------
+  vSDInit();
+  
   // ----------------------------------------------------------------------
   vDrawProgressBar(ucBootProgress);
   ++ucBootProgress;
-
-  vDrawLogo();
   
   // ----------------------------------------------------------------------
   vDrawProgressBar(ucBootProgress);
@@ -80,7 +115,7 @@ void setup()
   // we can release eeMLX90640 array and we can increase to 800kHz
   Wire.setClock(800000);
 
-  vMLX90640_EnableHiQualityMode(pdFALSE);
+  vMLX90640_EnableHiQualityMode(pdTRUE);
 //  Serial.printf("Cur res %d\n", MLX90640_GetCurResolution(IR_SENSOR_I2C_ADDR));
 
   // ----------------------------------------------------------------------
@@ -96,10 +131,6 @@ void setup()
   
   // start everything now safely
   GetFrameDataTask.emitSignal();
-}
 
-// this poor function not used at all
-void loop()
-{  
-  taskYIELD();
+  Serial.print("Ok!\n");
 }

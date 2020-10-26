@@ -4,6 +4,9 @@
 #include <SPI.h>
 #include <Wire.h>
 
+#include <FS.h>
+#include <SD.h>
+
 #include "common.h"
 #include "thermal_cam_pins.h"
 
@@ -36,6 +39,7 @@ void vAppMainTask(void *pvArg)
   (void) pvArg;
 
   BaseType_t xHiResBtnState = pdFALSE;
+  BaseType_t xNeedDelay = pdFALSE;     // compensate SD write time to get next MLX90640 frame faster
 
   AppMainTask.waitSignal();
 
@@ -43,9 +47,14 @@ void vAppMainTask(void *pvArg)
   tft.fillRect(20, 100, GUI_PROGRESS_BAR_STEP_SIZE * (IR_SENSOR_COLD_READS_NUM + 1), 8, ST7735_BLACK);
   // draw frame for thermogramm
   tft.drawRect(xGrid.ulScreenX, xGrid.ulScreenY, IR_SENSOR_MATRIX_2W * 2 + 4, IR_SENSOR_MATRIX_2H * 2, ST7735_WHITE);
+
+  uint32_t ulLastScreenShot = 0;
   
   for (;;) {
-    if (mlx90640FrameRdyCounter.take()) {
+    xHiResBtnState = (BaseType_t) digitalRead(OPT_KEY1_PIN);
+    xNeedDelay = pdTRUE; // by default yes, othervice overwrite
+    
+    if (mlx90640FrameRdyCounter.take(1)) {
       MLX90640Mutex.lock();
 
       // now, calculate and draw everything
@@ -54,15 +63,26 @@ void vAppMainTask(void *pvArg)
       vDrawMeasurement();
 
       MLX90640Mutex.unlock();
-    }
 
-    // now check hi-res button
-    xHiResBtnState = (BaseType_t) digitalRead(HI_PRECISION_BTN_PIN);
+
+      if (xHiResBtnState == pdFALSE) { // low or aka pressed
+        if ((millis() - ulLastScreenShot) > 125) { // 8 frames per sec
+          vTakeScreenShoot(NULL);
+  //        TakeScreenShotTimer.start(5000);
+          
+          ulLastScreenShot = millis();
+  
+          xNeedDelay = pdFALSE;
+        }
+      }
+    }
 
     if (xHiResBtnState != xGrid.xHiPrecisionModeIsEn) {
-      vMLX90640_EnableHiQualityMode(xHiResBtnState);
+      //vMLX90640_EnableHiQualityMode(xHiResBtnState);
     }
-
-    vTaskDelay(pdMS_TO_TICKS(25));
+    
+    if (xNeedDelay == pdTRUE) {
+     vTaskDelay(pdMS_TO_TICKS(25));
+    }
   }
 }

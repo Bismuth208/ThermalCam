@@ -3,7 +3,8 @@
 
 
 // ----------------------------------------------------------------------
-#define VERSION_STR "v0.2a"
+#define VERSION_STR "v0.3c"
+#define OTA_STR     "OTA"
 
 
 // ----------------------------------------------------------------------
@@ -44,6 +45,8 @@
 
 #define IR_CAM_DATA_FRAMES 2
 
+#define IR_CAM_MAX_COLORS 250
+
 #define IR_SAMPLING_LOW_Q  MLX90640_SPEED_8_HZ
 #define IR_SAMPLING_HI_Q   MLX90640_SPEED_4_HZ
 
@@ -52,6 +55,11 @@
 
 #define IR_SAMPLING_LOW_Q_TEXT "8x"
 #define IR_SAMPLING_HI_Q_TEXT  "4x"
+
+// ----------------------------------------------------------------------
+//#define IR_SENSOR_SD_THERMOGRAM_FILE  "%s/%05u.thc"
+//#define IR_SENSOR_SD_THERMOGRAMS_PATH "/mlx"
+//#define IR_SENSOR_SD_THERMOGRAM_PATH  "/sdcard/mlx/%04u" 
 
 
 // ----------------------------------------------------------------------
@@ -116,7 +124,9 @@ typedef enum {
 // ----------------------------------------------------------------------
 extern Adafruit_ST7735 tft;
 
-extern uint16_t usFrameBuffer[IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H];
+extern uint8_t ucFrameBuffer[IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H];
+
+extern uint16_t usPaletteColors[IR_CAM_MAX_COLORS];
 
 // ----------------------------------------------------------------------
 extern Grid_t xGrid;
@@ -126,21 +136,28 @@ extern IrCamDataFrame_t x_mlx90640Frame;
 extern float fMLX90640Oversampling[IR_ADC_OVERSAMPLING_COUNT][IR_SENSOR_DATA_FRAME_SIZE];
 
 extern uint8_t ucBootProgress;
+extern BaseType_t xIsSDCardFail;
 
 // ----------------------------------------------------------------------
-extern Task AppMainTask;
-extern Task GetFrameDataTask;
+extern Task <4096>AppMainTask;
+extern Task <2048>GetFrameDataTask;
+
+//extern Timer TakeScreenShotTimer;
 
 extern Mutex MLX90640Mutex;
 
 extern Counter <IR_ADC_OVERSAMPLING_COUNT> mlx90640FrameRdyCounter;
+extern Counter <1> ScreenShootRdyCounter;
 
 // ----------------------------------------------------------------------
 void vAppMainTask(void *pvArg);
 void vGetFrameDataTask(void *pvArg);
 
+void vTakeScreenShoot(void *pvArg);
+
 // ----------------------------------------------------------------------
 void vGridInit(void);
+void vSDInit(void);
 
 void vGridSetPaletteType(uint32_t ulPaletteType);
 void vGridPlace(int px, int py, int w, int h);
@@ -161,6 +178,12 @@ void vStartColdReadings(IrCamDataFrame_t *pxIrCamDataFrame);
 void vDrawLogo(void);
 void vDrawProgressBar(uint32_t ulState);
 void vDrawMeasurement(void);
+
+void vPrintSDStats(void);
+
+// ----------------------------------------------------------------------
+void start_wi_fi(void);
+void initWebServer(void);
 
 // ----------------------------------------------------------------------
 void vMLX90640_EnableHiQualityMode(BaseType_t xEnable);

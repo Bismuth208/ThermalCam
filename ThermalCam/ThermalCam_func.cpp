@@ -60,8 +60,8 @@ void vMLX90640_EnableHiQualityMode(BaseType_t xEnable)
 {
   MLX90640Mutex.lock();
   
-  MLX90640_SetRefreshRate(IR_SENSOR_I2C_ADDR, (xEnable == pdTRUE) ? IR_SAMPLING_HI_Q : IR_SAMPLING_LOW_Q);
-  MLX90640_SetResolution(IR_SENSOR_I2C_ADDR, (xEnable == pdTRUE) ? IR_SAMPLING_RES_HI_Q : IR_SAMPLING_RES_LOW_Q);
+  MLX90640_SetRefreshRate(IR_SENSOR_I2C_ADDR, (xEnable == pdFALSE) ? IR_SAMPLING_HI_Q : IR_SAMPLING_LOW_Q);
+  MLX90640_SetResolution(IR_SENSOR_I2C_ADDR, (xEnable == pdFALSE) ? IR_SAMPLING_RES_HI_Q : IR_SAMPLING_RES_LOW_Q);
 
   xGrid.xHiPrecisionModeIsEn = xEnable;
 
@@ -115,7 +115,9 @@ void vDrawMeasurement(void)
   vPrintAt(5, 116, "E");
   vPrintAt(12, 116, xGrid.fEmissivity);
 
-  vPrintAt(140, 116, (xGrid.xHiPrecisionModeIsEn == pdTRUE) ? IR_SAMPLING_HI_Q_TEXT : IR_SAMPLING_LOW_Q_TEXT);
+  vPrintAt(140, 116, (xGrid.xHiPrecisionModeIsEn == pdFALSE) ? IR_SAMPLING_HI_Q_TEXT : IR_SAMPLING_LOW_Q_TEXT);
+
+  vPrintSDStats();
 }
 
 // Immitation of serious work

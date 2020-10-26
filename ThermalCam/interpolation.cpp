@@ -64,6 +64,18 @@ const float fKernelWeights[IR_INTERPOLATION_K_WEIGHTS] = {
 #endif
 };
 
+// ----------------------------------------------------------------------
+// https://forum.arduino.cc/index.php?topic=247210.0
+template < typename T, typename U > struct IsSameType{ enum { Value = false }; };
+template < typename T > struct             IsSameType< T, T > { enum { Value = true }; };
+
+template< typename T, typename U, typename V, typename X, typename Y > 
+auto map_a( const T &x, U &&imin, V &&imax, X &&omin, Y &&omax ) -> T
+{
+  typedef decltype( IsSameType< T, decltype( ( signed ) T() ) >::Value ? 1LL : 1ULL ) cll;
+  return (cll)(x - imin) * (omax - omin) / (imax - imin) + omin;
+}
+
 
 // ----------------------------------------------------------------------
 void vGridSetPaletteType(uint32_t ulPaletteType)
@@ -98,9 +110,9 @@ void vGridInit(void)
   xGrid.ulScreenW = tft.height();
   // ?
   xGrid.pfScreenData = &xGrid.buff[32];
-  xGrid.buff[500] = 40; // why thi is here and what it does !?
+  xGrid.buff[500] = 40; // why this is here and what it does !?
 
-  xGrid.fEmissivity = 0.93;
+  xGrid.fEmissivity = 0.95;
 }
 
 // ----------------------------------------------------------------------
@@ -150,7 +162,7 @@ void vGridMakeAvg(void)
   float f_low = 1000;
   float f_tmp_mlx_val = 0;
 
-  if (xGrid.xHiPrecisionModeIsEn == pdTRUE) {
+  if (xGrid.xHiPrecisionModeIsEn == pdFALSE) {
     for (uint32_t j = 0; j < IR_SENSOR_DATA_FRAME_SIZE; j++) {
       for (uint32_t i = 0; i < IR_ADC_OVERSAMPLING_COUNT; i++) {
         f_tmp_mlx_val += fMLX90640Oversampling[i][j];
@@ -195,6 +207,8 @@ void vGridDrawInterpolated(void)
   int dx = xGrid.ulScreenW / IR_SENSOR_MATRIX_2W;
   int dy = xGrid.ulScreenH / IR_SENSOR_MATRIX_2H;
 
+  tft.startWrite();
+
   // down frame clip
   for (int i = 0; i < (IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W); i++) {
     pix = 0;
@@ -208,28 +222,24 @@ void vGridDrawInterpolated(void)
     
     int x = i & 0x0000003f;
     int y = i >> 6;
-    int v = map(pix, xGrid.fLow, xGrid.fHigh, 0, IR_CAM_MAX_COLORS);
+    int v = map_a(pix, xGrid.fLow, xGrid.fHigh, 0, IR_CAM_MAX_COLORS);
 
-#if 1
-    if (v < 0) {
-      v = 0;
-    }
-    if (v > (IR_CAM_MAX_COLORS-1)) {
-      v = (IR_CAM_MAX_COLORS-1);
-    }
-#endif
+    v = constrain(v, 0, (IR_CAM_MAX_COLORS-1));
 
     // down frame clip    
 //    if (i < (IR_SENSOR_MATRIX_W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W))
     {
       // also make horizontal flip
-      tft.fillRect(xGrid.ulScreenW - (x*2) + xGrid.ulScreenX, (y*2) + xGrid.ulScreenY, dx, dy, usPaletteColors[v]);
+      //tft.fillRect(xGrid.ulScreenW - (x*2) + xGrid.ulScreenX, (y*2) + xGrid.ulScreenY, dx, dy, usPaletteColors[v]);
+      tft.writeFillRectPreclipped(xGrid.ulScreenW - (x*2) + xGrid.ulScreenX, (y*2) + xGrid.ulScreenY, dx, dy, usPaletteColors[v]);
     }
 
     // origin size; Debug sensor
 //    tft.drawPixel(x + xGrid.ulScreenX, y + xGrid.ulScreenY, usPaletteColors[v]);
-//    usFrameBuffer[i] = usPaletteColors[v];
+    ucFrameBuffer[i] = v;
   }
+
+  tft.endWrite();
 
 #if 0
   tft.startWrite();

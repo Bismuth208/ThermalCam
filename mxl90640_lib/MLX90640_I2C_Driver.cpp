@@ -25,6 +25,11 @@ void MLX90640_I2CInit()
 
 }
 
+int MLX90640_I2CGeneralReset(void)
+{    
+  return 0;
+}
+
 //Read a number of words from startAddress. Store into Data array.
 //Returns 0 if successful, -1 if error
 int MLX90640_I2CRead(uint8_t _deviceAddress, unsigned int startAddress, unsigned int nWordsRead, uint16_t *data)

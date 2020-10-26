@@ -14,7 +14,7 @@ Yet another ESP32 Thermal Camera
 - 19bit ADC resolution;
 - 10x oversampling for a pure smoothie;
 - Gauss interpolation 2x (up to 64x48)px;
-- ~can save raw data on SD card to process on Desktop;~
+- can save raw data on SD card to process on Desktop;
 - HiQ mode via button for less noisy pics (4Hz speed);
 - two color modes: grayscale and normal thermogram;
 - min, max and average temp show;
@@ -42,6 +42,8 @@ on windows just copy folder "FreeRTOS-Helper" to "Documents/Arduino/libraries/"
 Also Adafruit dependencies required:
 - [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library.git "Adafruit GFX Library git");
 - [Adafruit ST7735 Library](https://github.com/adafruit/Adafruit-ST7735-Library.git "Adafruit ST7735 Library git");
+- [Adafruit ST7735 Library](https://github.com/adafruit/Adafruit_BusIO "Adafruit BusIO Library git");
 
 ***
 ![TestSubject1 ](pics/test_showcase1.png "TestSubject1")
+![TestSubject1 ](pics/ok_fist.gif "CrabPeople")
