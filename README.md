@@ -12,11 +12,11 @@ Yet another ESP32 Thermal Camera
 
 #### Enabled:
 - 19bit ADC resolution;
-- 10x oversampling for a pure smoothie;
+- 10x oversampling for a pure smoothie smooth image;
 - Gauss interpolation 2x (up to 64x48)px;
 - can save raw data on SD card to process on Desktop;
-- HiQ mode via button for less noisy pics (4Hz speed);
-- two color modes: grayscale and normal thermogram;
+- ~HiQ mode via button for less noisy pics (4Hz speed);~
+- ~two color modes: grayscale and normal thermogram;~
 - min, max and average temp show;
 - more or less clean code without magic numbers.
 
@@ -25,25 +25,59 @@ FPS? Hmmm... it’s limited by hardware of IR Sensor. So, typical value is 4Hz o
 
 #### HOWTO
 
-To make link on linux/nix/bsd systems:
+First of all you need to download all that stuff below.
+
+
+ESP32 dependencies required:
+- [ESPAsyncWebServer Library](https://github.com/me-no-dev/ESPAsyncWebServer.git "ESPAsyncWebServer Library git");
+- [Arduino core for the ESP32](https://github.com/espressif/arduino-esp32.git "Arduino core for the ESP32 git");
+
+
+Adafruit dependencies required:
+- [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library.git "Adafruit GFX Library git");
+- [Adafruit ST7735 Library](https://github.com/adafruit/Adafruit-ST7735-Library.git "Adafruit ST7735 Library git");
+- [Adafruit BusIO Library](https://github.com/adafruit/Adafruit_BusIO "Adafruit BusIO Library git");
+
+
+My dependencies required:
+- [FreeRTOS Helper](https://github.com/Bismuth208/FreeRTOS-Helper.git "My own FreeRTOS-Helper git")
+
+~Maybe, someday, i will automate this process...~
+***
+![CrabPeople ](pics/ok_fist.gif "CrabPeople")
+
+***
+Now, use all power of *etherything is file* and make link on linux/nix/bsd systems:
 ```
 ln -s "/Users/YourUserFolderName/Documents/Repos/Git/ThermalCam/mxl90640_lib" "/Users/YourUserFolderName/Documents/Arduino/libraries/mxl90640_lib"
 ```
-on windows just copy folder "mxl90640_lib" to "Documents/Arduino/libraries/"
 
-And to make my life more simple to work with FreeRTOS download [this repo](https://github.com/Bismuth208/FreeRTOS-Helper.git "My own FreeRTOS-Helper git"),
+And to make my life more simple to work with FreeRTOS download *FreeRTOS-Helper* via link above,
 then link same way:
 ```
 ln -s "/Users/YourUserFolderName/Documents/Repos/Git/FreeRTOS-Helper" "/Users/YourUserFolderName/Documents/Arduino/libraries/FreeRTOS-Helper"
 ```
-on windows just copy folder "FreeRTOS-Helper" to "Documents/Arduino/libraries/"
 
+... and so on for all dependecies.
 
-Also Adafruit dependencies required:
-- [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library.git "Adafruit GFX Library git");
-- [Adafruit ST7735 Library](https://github.com/adafruit/Adafruit-ST7735-Library.git "Adafruit ST7735 Library git");
-- [Adafruit ST7735 Library](https://github.com/adafruit/Adafruit_BusIO "Adafruit BusIO Library git");
+> But hey!
+> I'm a Windows user!
+> How i must to instal libraries!?
+> What the heck!?!?
+
+Well... hmm... via worst and simple way:
+```
+on Windows just copy amlost all libraries to "Documents/Arduino/libraries/", except esp-idf
+```
+
 
 ***
+The end.
+
 ![TestSubject1 ](pics/test_showcase1.png "TestSubject1")
-![TestSubject1 ](pics/ok_fist.gif "CrabPeople")
+
+
+> ## :exclamation: ATTENTION! :exclamation:
+>  * This project is still unstable and in develop! :beetle:
+>  * Any changes are possible at any time! 
+>  * and this cat above is awesome!
