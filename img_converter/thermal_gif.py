@@ -51,7 +51,7 @@ def main():
       frame = Image.open(restored_frame_name)
       images.append(frame)
 
-    gif_duration = 150 #len(scanned_files) FIXME: god damn! make some magic! you know... MAGIC!!
+    gif_duration = 140 #len(scanned_files) FIXME: god damn! make some magic! you know... MAGIC!!
 
     # sorry for this...
     file_name = os.path.dirname(in_file_path) + '/' + '00000.gif'

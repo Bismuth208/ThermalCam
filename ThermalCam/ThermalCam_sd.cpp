@@ -19,6 +19,8 @@ uint8_t ucCurrentFolderPathBuff[64];
 // and save as raw to SD with minimum overhead
 uint8_t ucFrameBuffer[IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H];
 
+int16_t sSdBufTest[32 * 24];
+
 // ----------------------------------------------------------------------
 void vSDInit(void)
 {
@@ -75,6 +77,7 @@ void vTakeScreenShoot(void *pvArg)
     sprintf((char *) &ucBuff[0], "/sd%s/%05u.thc", (char *) &ucCurrentFolderPathBuff[0], ulTotalPics);
     
     writeFile((const char *) &ucBuff[0], (uint8_t *) &ucFrameBuffer[0], sizeof(ucFrameBuffer));
+    //writeFile((const char *) &ucBuff[0], (uint8_t *) &sSdBufTest[0], sizeof(sSdBufTest));
 
     ++ulTotalPics;
 

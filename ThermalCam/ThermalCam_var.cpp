@@ -15,7 +15,7 @@ Adafruit_ST7735 tft = Adafruit_ST7735(TFT_CS_PIN, TFT_DC_PIN, -1 /*, TFT_MOSI_PI
 // ----------------------------------------------------------------------
 Grid_t xGrid;
 
-paramsMLX90640 mlx90640;
+paramsMLX90640 x_mlx90640;
 IrCamDataFrame_t x_mlx90640Frame;
 float fMLX90640Oversampling[IR_ADC_OVERSAMPLING_COUNT][IR_SENSOR_DATA_FRAME_SIZE];
 
@@ -23,7 +23,7 @@ uint8_t ucBootProgress = 0;
 BaseType_t xIsSDCardFail = pdFALSE;
 
 // ----------------------------------------------------------------------
-Task <4096>AppMainTask((TaskFunction_t) vAppMainTask);
+Task <4096>AppMainTask((TaskFunction_t) vAppMainTask, ESP32_CORE_0);
 Task <2048>GetFrameDataTask((TaskFunction_t) vGetFrameDataTask);
 
 //Timer TakeScreenShotTimer((TimerCallbackFunction_t) vTakeScreenShoot);

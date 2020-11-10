@@ -3,7 +3,7 @@
 
 
 // ----------------------------------------------------------------------
-#define VERSION_STR "v0.3c"
+#define VERSION_STR "v0.3d"
 #define OTA_STR     "OTA"
 
 
@@ -51,7 +51,7 @@
 #define IR_SAMPLING_HI_Q   MLX90640_SPEED_4_HZ
 
 #define IR_SAMPLING_RES_LOW_Q MLX90640_RESOLUTION_18BIT
-#define IR_SAMPLING_RES_HI_Q  MLX90640_RESOLUTION_19BIT
+#define IR_SAMPLING_RES_HI_Q  MLX90640_RESOLUTION_18BIT // or 19 bits ?
 
 #define IR_SAMPLING_LOW_Q_TEXT "8x"
 #define IR_SAMPLING_HI_Q_TEXT  "4x"
@@ -87,6 +87,10 @@ typedef struct {
   uint16_t ulScreenY;
   uint16_t ulScreenW;
   uint16_t ulScreenH;
+
+  uint16_t usSreenDx;
+  uint16_t usSreenDy;
+  
   float fHigh;
   float fLow;
   float fAvgCenter;
@@ -128,10 +132,13 @@ extern uint8_t ucFrameBuffer[IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H];
 
 extern uint16_t usPaletteColors[IR_CAM_MAX_COLORS];
 
+
+extern int16_t sSdBufTest[32 * 24];
+
 // ----------------------------------------------------------------------
 extern Grid_t xGrid;
 
-extern paramsMLX90640 mlx90640;
+extern paramsMLX90640 x_mlx90640;
 extern IrCamDataFrame_t x_mlx90640Frame;
 extern float fMLX90640Oversampling[IR_ADC_OVERSAMPLING_COUNT][IR_SENSOR_DATA_FRAME_SIZE];
 
@@ -164,8 +171,7 @@ void vGridPlace(int px, int py, int w, int h);
 void vGridSetColorMode(int mode);
 void vGridMakeAvg(void);
 void vGridFindMaxMinAvg(float f_high, float f_low);
-
-void vGridDrawInterpolated(void);
+void vGridInterpolate(void);
 
 // ----------------------------------------------------------------------
 void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255);
@@ -177,6 +183,7 @@ void vStartColdReadings(IrCamDataFrame_t *pxIrCamDataFrame);
 
 void vDrawLogo(void);
 void vDrawProgressBar(uint32_t ulState);
+void vDrawInterpolated(void);
 void vDrawMeasurement(void);
 
 void vPrintSDStats(void);

@@ -106,7 +106,7 @@ void normal_init(void)
     Serial.printf("Failed to load system parameters %d \n", status);
   }
 
-  status = MLX90640_ExtractParameters(&x_mlx90640Frame.mlx90640Frame[0], &mlx90640);
+  status = MLX90640_ExtractParameters(&x_mlx90640Frame.mlx90640Frame[0], &x_mlx90640);
   if (status != 0) {
     Serial.printf("Parameter extraction failed %d \n", status);
   }

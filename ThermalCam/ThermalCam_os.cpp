@@ -26,7 +26,15 @@ void vGetFrameDataTask(void *pvArg)
   AppMainTask.emitSignal();
 
   for (;;) {
+    // now, calculate safely...
+    MLX90640Mutex.lock();
     vMLX90640_GetDataFrame(pxIrCamDataFrame);
+    
+    vGridMakeAvg();
+    vGridInterpolate();
+    MLX90640Mutex.unlock();
+
+     // new frame ready, so, process it in another task
     mlx90640FrameRdyCounter.give();
 
     vTaskDelay(pdMS_TO_TICKS(1));
@@ -43,7 +51,7 @@ void vAppMainTask(void *pvArg)
 
   AppMainTask.waitSignal();
 
-    // remove progress bar
+  // remove progress bar
   tft.fillRect(20, 100, GUI_PROGRESS_BAR_STEP_SIZE * (IR_SENSOR_COLD_READS_NUM + 1), 8, ST7735_BLACK);
   // draw frame for thermogramm
   tft.drawRect(xGrid.ulScreenX, xGrid.ulScreenY, IR_SENSOR_MATRIX_2W * 2 + 4, IR_SENSOR_MATRIX_2H * 2, ST7735_WHITE);
@@ -55,18 +63,14 @@ void vAppMainTask(void *pvArg)
     xNeedDelay = pdTRUE; // by default yes, othervice overwrite
     
     if (mlx90640FrameRdyCounter.take(1)) {
+      // now, draw everything
       MLX90640Mutex.lock();
-
-      // now, calculate and draw everything
-      vGridMakeAvg();
-      vGridDrawInterpolated();
+      
+      vDrawInterpolated();
       vDrawMeasurement();
 
-      MLX90640Mutex.unlock();
-
-
       if (xHiResBtnState == pdFALSE) { // low or aka pressed
-        if ((millis() - ulLastScreenShot) > 125) { // 8 frames per sec
+        if ((millis() - ulLastScreenShot) > 100) { // 8 frames per sec
           vTakeScreenShoot(NULL);
   //        TakeScreenShotTimer.start(5000);
           
@@ -75,14 +79,18 @@ void vAppMainTask(void *pvArg)
           xNeedDelay = pdFALSE;
         }
       }
-    }
 
-    if (xHiResBtnState != xGrid.xHiPrecisionModeIsEn) {
-      //vMLX90640_EnableHiQualityMode(xHiResBtnState);
+      if (xHiResBtnState != xGrid.xHiPrecisionModeIsEn) {
+        vMLX90640_EnableHiQualityMode(xHiResBtnState);
+      }
+
+      MLX90640Mutex.unlock();
     }
     
     if (xNeedDelay == pdTRUE) {
      vTaskDelay(pdMS_TO_TICKS(25));
+    } else {
+      vTaskDelay(pdMS_TO_TICKS(1));
     }
   }
 }

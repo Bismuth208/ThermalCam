@@ -58,14 +58,10 @@ void vDrawLogo(void)
 // ----------------------------------------------------------------------
 void vMLX90640_EnableHiQualityMode(BaseType_t xEnable)
 {
-  MLX90640Mutex.lock();
-  
   MLX90640_SetRefreshRate(IR_SENSOR_I2C_ADDR, (xEnable == pdFALSE) ? IR_SAMPLING_HI_Q : IR_SAMPLING_LOW_Q);
   MLX90640_SetResolution(IR_SENSOR_I2C_ADDR, (xEnable == pdFALSE) ? IR_SAMPLING_RES_HI_Q : IR_SAMPLING_RES_LOW_Q);
 
   xGrid.xHiPrecisionModeIsEn = xEnable;
-
-  MLX90640Mutex.unlock();
 }
 
 void vMLX90640_GetDataFrame(IrCamDataFrame_t *pxIrCamDataFrame)
@@ -74,19 +70,17 @@ void vMLX90640_GetDataFrame(IrCamDataFrame_t *pxIrCamDataFrame)
   float Ta = 0;
   float tr = -8; //Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
   
-  MLX90640Mutex.lock();
-
   for (uint32_t i = 0; i < IR_CAM_DATA_FRAMES; i++) { // read both subpages
     MLX90640_GetFrameData(IR_SENSOR_I2C_ADDR, &pxIrCamDataFrame->mlx90640Frame[0]);
 
-//      vdd = MLX90640_GetVdd(&pxIrCamDataFrame->mlx90640Frame[0], &mlx90640);
-    Ta = MLX90640_GetTa(&pxIrCamDataFrame->mlx90640Frame[0], &mlx90640);
+//      vdd = MLX90640_GetVdd(&pxIrCamDataFrame->mlx90640Frame[0], &x_mlx90640);
+    Ta = MLX90640_GetTa(&pxIrCamDataFrame->mlx90640Frame[0], &x_mlx90640);
     tr = Ta - TA_SHIFT;
 
-//      MLX90640_BadPixelsCorrection(&mlx90640.brokenPixels[0], &fMLX90640Oversampling[xGrid.ulOversamplingPos][0], 1, &mlx90640);
-//      MLX90640_BadPixelsCorrection(&mlx90640.outlierPixels[0], &fMLX90640Oversampling[xGrid.ulOversamplingPos][0], 1, &mlx90640);
+//      MLX90640_BadPixelsCorrection(&mlx90640.brokenPixels[0], &fMLX90640Oversampling[xGrid.ulOversamplingPos][0], 1, &x_mlx90640);
+//      MLX90640_BadPixelsCorrection(&mlx90640.outlierPixels[0], &fMLX90640Oversampling[xGrid.ulOversamplingPos][0], 1, &x_mlx90640);
 
-    MLX90640_CalculateTo(&pxIrCamDataFrame->mlx90640Frame[0], &mlx90640, xGrid.fEmissivity, tr, &fMLX90640Oversampling[xGrid.ulOversamplingPos][0]);
+    MLX90640_CalculateTo(&pxIrCamDataFrame->mlx90640Frame[0], &x_mlx90640, xGrid.fEmissivity, tr, &fMLX90640Oversampling[xGrid.ulOversamplingPos][0]);
   }
 
   // now move ONLY here to read subpages propertly
@@ -94,11 +88,49 @@ void vMLX90640_GetDataFrame(IrCamDataFrame_t *pxIrCamDataFrame)
   if (xGrid.ulOversamplingPos >= IR_ADC_OVERSAMPLING_COUNT) {
     xGrid.ulOversamplingPos = 0;
   }
-  
-  MLX90640Mutex.unlock();
 }
 
 // ----------------------------------------------------------------------
+void vDrawInterpolated(void)
+{
+  int x = 0;
+  int y = 0;
+  uint16_t usColor = 0;
+
+  tft.startWrite();
+
+  // down frame clip
+  for (int i = 0; i < (IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W); i++) {
+    x = i & 0x0000003f;
+    x = xGrid.ulScreenW - (x*2) + xGrid.ulScreenX;
+    
+    y = i >> 6;
+    y = (y*2) + xGrid.ulScreenY;
+    
+    usColor = usPaletteColors[ucFrameBuffer[i]];
+
+    // down frame clip    
+//    if (i < (IR_SENSOR_MATRIX_W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W))
+    {
+      // also make horizontal flip
+      //tft.fillRect(xGrid.ulScreenW - (x*2) + xGrid.ulScreenX, (y*2) + xGrid.ulScreenY, dx, dy, usPaletteColors[v]);
+      tft.writeFillRectPreclipped(x, y, xGrid.usSreenDx, xGrid.usSreenDy, usColor);
+    }
+
+    // origin size; Debug sensor
+//    tft.drawPixel(x + xGrid.ulScreenX, y + xGrid.ulScreenY, usPaletteColors[v]);
+  }
+
+  tft.endWrite();
+
+#if 0
+  tft.startWrite();
+  tft.setAddrWindow(xGrid.ulScreenX, xGrid.ulScreenY, IR_SENSOR_MATRIX_2W, IR_SENSOR_MATRIX_2H);
+  tft.writePixels(&usFrameBuffer[0], IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H);
+  tft.endWrite();
+#endif
+}
+
 void vDrawMeasurement(void)
 {
   tft.drawCircle(80, 50, 4, ST7735_WHITE);
