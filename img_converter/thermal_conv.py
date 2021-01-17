@@ -1,11 +1,12 @@
 #
 #
-#
-#
+# minimal python3
+# 
 
 import glob
 import os
 import argparse
+import concurrent.futures
 from PIL import Image
 
 # ------------------------------------------------------------------------ #
@@ -278,24 +279,32 @@ def save_file_data(file_name, file_data_bytes):
         file.write(file_data_bytes)
 
 # ------------------------------------------------------------------------ #
-def conv_565_to_rgb(color_id):
+def conv_565_to_rgb(color):
   rgb_val = []
   
-  rgb_val += [(((ironbow_palette[color_id] & 0xF800) >> 11) << 3) & 0xFF]
-  rgb_val += [(((ironbow_palette[color_id] & 0x7E0) >> 5) << 2) & 0xFF]
-  rgb_val += [(((ironbow_palette[color_id] & 0x1F)) << 3) & 0xFF]
+  rgb_val += [(((color & 0xF800) >> 11) << 3) & 0xFF]
+  rgb_val += [(((color & 0x7E0) >> 5) << 2) & 0xFF]
+  rgb_val += [(((color & 0x1F)) << 3) & 0xFF]
   
   return rgb_val
 
 
-def save_pal():
+def create_rgb_pal():
+  palette = []
+  for color_in_565 in ironbow_palette:
+    palette += conv_565_to_rgb(color_in_565)
+
+  return palette
+
+
+def save_pal(pal_data):
   pal_pic_raw = []
   for i in range(len(palette_ext)):
     pal_pic_raw += [i]
   
   pal_pic = Image.new(mode='P', size=(16, 5))
   pal_pic.putdata(bytes(pal_pic_raw))
-  pal_pic.putpalette(palette_ext_rgb, rawmode='RGB')
+  pal_pic.putpalette(pal_data, rawmode='RGB')
   pal_pic.save('./pal.png', 'png')
 
 
@@ -308,6 +317,7 @@ def save_pic(pic_name, rgb_data, pal_data):
   img.putpalette(pal_data, rawmode='RGB')
   
   img = img.resize((img.width * img_scale_factor, img.height * img_scale_factor))
+
   img.save(pic_name, 'png')
   
   #img.show()
@@ -322,25 +332,29 @@ def search_files(dest_path):
 
   return result
 
+
+def transcode_image(dest_path, pal_data):
+  print(f'File {dest_path}.png')
+
+  raw_pic = get_file_data(dest_path)
+  save_pic(dest_path + '.png', raw_pic, pal_data)
+
 # ------------------------------------------------------------------------ #
 def main():
-  parser.add_argument('-d', '--path', action='store', default='./mlx', help='select where get thermoframes')
+  parser.add_argument('-d', '--path', action='store', default='./mlx/0000/', help='select where get thermoframes')
   args = parser.parse_args()
 
-  palette_ext_rgb = []
   in_file_path = args.path
 
   if len(in_file_path) > 0:
-    for i in range(len(ironbow_palette)):
-      palette_ext_rgb += conv_565_to_rgb(i)
+    palette_ext_rgb = create_rgb_pal()
 
-    for file in search_files(in_file_path):
-      raw_pic = get_file_data(file)
-      save_pic(file + '.png', raw_pic, palette_ext_rgb)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+      process = [executor.submit(transcode_image, file, palette_ext_rgb) for file in search_files(in_file_path)]
 
   else:
-    print('Dir not found:', in_file_path)
+    print(f'Dir {in_file_path} not found.')
 
 
 if __name__ == '__main__':
-    main()
+  main()

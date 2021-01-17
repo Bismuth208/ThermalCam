@@ -1,11 +1,12 @@
 #
 #
-#
+# threaded: Done in:  0.020416875
 #
 
 import glob
 import os
 import argparse
+import concurrent.futures
 from PIL import Image
 
 # ------------------------------------------------------------------------ #
@@ -23,33 +24,28 @@ def search_files(dest_path):
 
 
 def main():
-  parser.add_argument('-d', '--path', action='store', default='./mlx', help='select where get *.png')
+  parser.add_argument('-d', '--path', action='store', default='./mlx/0000/', help='select where get *.png')
   args = parser.parse_args()
 
   in_file_path = args.path
 
-  images = []
-
   if len(in_file_path) > 0:
     scanned_files = search_files(in_file_path)
-    #scanned_files.sort(key=int)
-
-    frames = []
+    
+    # remove path and extension to left only name aka index
+    frames = [file[ len(os.path.dirname(file))+1 : -8] for file in scanned_files]
     
     # sort frames in numeric order... kinda...
-    for file in scanned_files:
-      # remove path and extension to left only name aka index
-      frame_name = file[ len(os.path.dirname(file))+1 : -8]
-      frames.append(frame_name)
-
     frames.sort(key=int)
 
-    # now load all images
-    for frame in frames:
-      restored_frame_name = in_file_path + '/' + frame + '.thc.png'
+    restored_frame_names = [in_file_path + '/' + frame + '.thc.png' for frame in frames]
 
-      frame = Image.open(restored_frame_name)
-      images.append(frame)
+    # now load all images
+    images = []
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+      for result in executor.map(Image.open, restored_frame_names):
+        images.append(result)
 
     gif_duration = 140 #len(scanned_files) FIXME: god damn! make some magic! you know... MAGIC!!
 
@@ -60,7 +56,7 @@ def main():
            save_all=True, duration=gif_duration, loop=0)
 
   else:
-    print('Dir not found:', in_file_path)
+    print(f'Dir {in_file_path} not found.')
 
 
 if __name__ == '__main__':
