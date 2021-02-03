@@ -23,7 +23,7 @@ uint8_t ucBootProgress = 0;
 BaseType_t xIsSDCardFail = pdFALSE;
 
 // ----------------------------------------------------------------------
-Task <4096>AppMainTask((TaskFunction_t) vAppMainTask, ESP32_CORE_0);
+Task <4096>AppMainTask((TaskFunction_t) vAppMainTask, OS_MCU_CORE_0);
 Task <2048>GetFrameDataTask((TaskFunction_t) vGetFrameDataTask);
 
 //Timer TakeScreenShotTimer((TimerCallbackFunction_t) vTakeScreenShoot);
