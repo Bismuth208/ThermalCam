@@ -66,7 +66,7 @@ void start_wi_fi(void)
   WiFi.begin(ssid, password);
   
   while (!WiFi.isConnected()) {
-    vTaskDelay(pdMS_TO_TICKS(500));
+    Task<0>::delay(500);
     Serial.print(("."));
   }
 #endif

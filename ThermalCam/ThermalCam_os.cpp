@@ -37,7 +37,7 @@ void vGetFrameDataTask(void *pvArg)
      // new frame ready, so, process it in another task
     mlx90640FrameRdyCounter.give();
 
-    vTaskDelay(pdMS_TO_TICKS(1));
+    Task<0>::delay(1);
   }
 }
 
@@ -88,9 +88,34 @@ void vAppMainTask(void *pvArg)
     }
     
     if (xNeedDelay == pdTRUE) {
-     vTaskDelay(pdMS_TO_TICKS(25));
+     Task<0>::delay(25);
     } else {
-      vTaskDelay(pdMS_TO_TICKS(1));
+      Task<0>::delay(1);
     }
+  }
+}
+
+void vBtnPollerTask(void *pvArg)
+{
+  (void) pvArg;
+
+  for (;;) {
+    for (auto &xBtn : xBtns) {
+     if ((millis() - xBtn.ulLastPollTimeout) >= xBtn.ulPollTimeout) {
+        xBtn.xCurState = (BaseType_t) digitalRead(xBtn.ilBtn);
+
+        if (xBtn.xCurState != xBtn.xPrevState) {
+          xBtn.xPrevState = xBtn.xCurState;
+        } else {
+          if (xBtn.pvfxCallback != NULL) {
+            xBtn.pvfxCallback(xBtn.xCurState);
+
+            xBtn.ulLastPollTimeout = millis();
+          }
+        }
+      } 
+    }
+
+    Task<0>::delay(1);
   }
 }

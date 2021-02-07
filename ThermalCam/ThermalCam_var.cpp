@@ -22,11 +22,26 @@ float fMLX90640Oversampling[IR_ADC_OVERSAMPLING_COUNT][IR_SENSOR_DATA_FRAME_SIZE
 uint8_t ucBootProgress = 0;
 BaseType_t xIsSDCardFail = pdFALSE;
 
-// ----------------------------------------------------------------------
-Task <4096>AppMainTask((TaskFunction_t) vAppMainTask, OS_MCU_CORE_0);
-Task <2048>GetFrameDataTask((TaskFunction_t) vGetFrameDataTask);
+btn_poller_t xBtns[1] = {
+  { 
+    25, // ulPollTimeout
+    0,  // ulLastPollTimeout
 
-//Timer TakeScreenShotTimer((TimerCallbackFunction_t) vTakeScreenShoot);
+    OPT_KEY1_PIN,  // ilBtn
+
+    pdFALSE,  // xCurState
+    pdFALSE,  // xPrevState
+
+    vTakeSreenShotFlag  // .pvfxCallback
+  }  
+};
+
+// ----------------------------------------------------------------------
+Task <4096>AppMainTask(vAppMainTask, OS_MCU_CORE_0);
+Task <2048>GetFrameDataTask(vGetFrameDataTask);
+//Task <2048>BtnPollerTask(vBtnPollerTask);
+
+//Timer TakeScreenShotTimer(vTakeScreenShoot);
 
 Mutex MLX90640Mutex;
 

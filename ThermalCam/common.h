@@ -3,7 +3,7 @@
 
 
 // ----------------------------------------------------------------------
-#define VERSION_STR "v0.3d"
+#define VERSION_STR "v0.3e"
 #define OTA_STR     "OTA"
 
 
@@ -126,6 +126,23 @@ typedef enum {
 } IR_Palettes_t;
 
 // ----------------------------------------------------------------------
+typedef void (*btn_poller_callabck_t) (BaseType_t xBtnState);
+
+typedef struct {
+  uint32_t ulPollTimeout;
+  uint32_t ulLastPollTimeout;
+  
+  int32_t ilBtn;
+  //int32_t ilBtnReadState;
+
+  BaseType_t xCurState;
+  BaseType_t xPrevState;
+
+  btn_poller_callabck_t pvfxCallback;
+} btn_poller_t;
+
+
+// ----------------------------------------------------------------------
 extern Adafruit_ST7735 tft;
 
 extern uint8_t ucFrameBuffer[IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H];
@@ -134,6 +151,8 @@ extern uint16_t usPaletteColors[IR_CAM_MAX_COLORS];
 
 
 extern int16_t sSdBufTest[32 * 24];
+
+extern btn_poller_t xBtns[1];
 
 // ----------------------------------------------------------------------
 extern Grid_t xGrid;
@@ -148,6 +167,7 @@ extern BaseType_t xIsSDCardFail;
 // ----------------------------------------------------------------------
 extern Task <4096>AppMainTask;
 extern Task <2048>GetFrameDataTask;
+//extern Task <2048>BtnPollerTask;
 
 //extern Timer TakeScreenShotTimer;
 
@@ -159,6 +179,7 @@ extern Counter <1> ScreenShootRdyCounter;
 // ----------------------------------------------------------------------
 void vAppMainTask(void *pvArg);
 void vGetFrameDataTask(void *pvArg);
+void vBtnPollerTask(void *pvArg);
 
 void vTakeScreenShoot(void *pvArg);
 
@@ -187,6 +208,11 @@ void vDrawInterpolated(void);
 void vDrawMeasurement(void);
 
 void vPrintSDStats(void);
+
+
+// ----------------------------------------------------------------------
+void vTakeSreenShotFlag(BaseType_t xBtnState);
+void vtakeVideoFlag(BaseType_t xBtnState);
 
 // ----------------------------------------------------------------------
 void start_wi_fi(void);

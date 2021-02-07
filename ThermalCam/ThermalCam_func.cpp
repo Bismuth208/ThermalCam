@@ -168,5 +168,11 @@ void vStartColdReadings(IrCamDataFrame_t *pxIrCamDataFrame)
   }
 
   // FIXME: remove this one by oversamplng read
-  vTaskDelay(pdMS_TO_TICKS(GUI_BOOT_LOGO_DELAY)); // yeees...
+  Task<0>::delay(GUI_BOOT_LOGO_DELAY); // yeees...
+}
+
+// ----------------------------------------------------------------------
+void vTakeSreenShotFlag(BaseType_t xBtnState)
+{
+  
 }
