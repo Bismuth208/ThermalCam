@@ -42,6 +42,22 @@ void vSDInit(void)
       sprintf((char *) &ucCurrentFolderPathBuff[0], "/mlx/%04u", ulTotalFolders);
     }
 
+    --ulTotalFolders;
+      
+    sprintf((char *) &ucCurrentFolderPathBuff[0], "/mlx/%04u", ulTotalFolders);
+
+    // now check if dir is empty
+    auto dir = SD.open((const char *) &ucCurrentFolderPathBuff[0]);
+    auto entry = dir.openNextFile();
+
+    if (entry) {
+      ++ulTotalFolders;
+      
+      sprintf((char *) &ucCurrentFolderPathBuff[0], "/mlx/%04u", ulTotalFolders);
+
+      dir.close();
+    }
+
     SD.mkdir((char *) &ucCurrentFolderPathBuff[0]);
   }
 }

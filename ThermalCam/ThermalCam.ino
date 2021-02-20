@@ -65,6 +65,8 @@ void setup()
     WiFi.mode(WIFI_OFF);
     btStop();
 
+    //vPrintAt(20, 100, ESP.getSdkVersion());
+
     normal_init();
   }
 }
