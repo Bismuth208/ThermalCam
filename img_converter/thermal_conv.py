@@ -6,6 +6,7 @@
 import glob
 import os
 import argparse
+from struct import *
 import concurrent.futures
 from PIL import Image
 
@@ -267,6 +268,33 @@ ironbow_palette = [
   0xffda,
 ]
 
+VERSION_DATA = 1
+
+THC_FRAME_DATA_TYPE_CAL = 1
+THC_FRAME_DATA_TYPE_STILL = 2
+THC_FRAME_DATA_TYPE_MOV = 3
+
+# Header format
+# |---- name --------|-- size ------|-- offset - |
+# | marker           |4 bytes       | +0         |
+# | version          |4 bytes       | +4         |
+# | size             |4 bytes       | +8         |
+# | type             |4 bytes       | +12        |
+# | reserved[12]     |4 bytes * 12  | +14        |
+# | cal_data_size    |4 bytes       | +64        |
+# | frame_data_size  |4 bytes       | +68        |
+# |----------------------------------------------|
+#
+# File format
+# |---- name --------|-- size ------|-- offset - |
+# | header           | 72 bytes     | +0         |
+# | data             | *(1)         | +72        |
+# |----------------------------------------------|
+#
+# *(1) Data type and it's size depends on data type
+#      described in header in field 'type'.
+#
+
 
 # ------------------------------------------------------------------------ #
 def get_file_data(file_name):
@@ -315,7 +343,8 @@ def save_pic(pic_name, rgb_data, pal_data):
   
   img.putdata(bytes(rgb_data))
   img.putpalette(pal_data, rawmode='RGB')
-  
+
+  img = img.transpose(Image.FLIP_LEFT_RIGHT)
   img = img.resize((img.width * img_scale_factor, img.height * img_scale_factor))
 
   img.save(pic_name, 'png')
@@ -334,10 +363,19 @@ def search_files(dest_path):
 
 
 def transcode_image(dest_path, pal_data):
-  print(f'File {dest_path}.png')
-
   raw_pic = get_file_data(dest_path)
-  save_pic(dest_path + '.png', raw_pic, pal_data)
+
+  version_data = int(''.join(map(str, Struct('<I').unpack(raw_pic[4 : 8]))))
+
+  if VERSION_DATA == version_data:
+    type_data = int(''.join(map(str, Struct('<I').unpack(raw_pic[12 : 16]))))
+
+    if type_data != THC_FRAME_DATA_TYPE_CAL:
+      if type_data == THC_FRAME_DATA_TYPE_STILL:
+
+        print(f'File {dest_path}.png')
+
+        save_pic(dest_path + '.png', raw_pic[72 : ], pal_data)
 
 # ------------------------------------------------------------------------ #
 def main():

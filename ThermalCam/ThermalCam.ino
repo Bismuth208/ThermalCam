@@ -82,6 +82,7 @@ void normal_init(void)
 {
   // ----------------------------------------------------------------------
   vSDInit();
+  v_init_thc_struct();
   
   // ----------------------------------------------------------------------
   vDrawProgressBar(ucBootProgress);
@@ -116,6 +117,8 @@ void normal_init(void)
   // Once params are extracted
   // we can release eeMLX90640 array and we can increase to 800kHz
   Wire.setClock(800000);
+
+  v_thc_save_cal();
 
   vMLX90640_EnableHiQualityMode(pdTRUE);
 //  Serial.printf("Cur res %d\n", MLX90640_GetCurResolution(IR_SENSOR_I2C_ADDR));

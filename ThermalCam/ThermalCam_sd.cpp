@@ -21,6 +21,8 @@ uint8_t ucFrameBuffer[IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H];
 
 int16_t sSdBufTest[32 * 24];
 
+thc_frame_t x_thc_frame;
+
 // ----------------------------------------------------------------------
 void vSDInit(void)
 {
@@ -62,20 +64,63 @@ void vSDInit(void)
   }
 }
 
+/*
+ * @brief Basic init for frame data files
+ * @ret none
+ */
+void v_init_thc_struct(void)
+{
+  memset(&x_thc_frame, 0xff, sizeof(x_thc_frame));
+  memcpy(&x_thc_frame.x_header.uc_marker[0], "THC", sizeof("THC"));
+
+  x_thc_frame.x_header.ul_version = THC_FRAME_DATA_VER;
+  x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_STILL;
+  x_thc_frame.x_header.ul_cal_data_size = sizeof(paramsMLX90640);
+  x_thc_frame.x_header.ul_frame_data_size = sizeof(ucFrameBuffer);
+
+  x_thc_frame.puc_cal_data = (uint8_t*) &x_mlx90640;
+  x_thc_frame.puc_frame_data = (uint8_t *) &ucFrameBuffer[0];
+}
+
+/*
+ * @brief Save calibration data from MLX90640 sensor
+ * @ret none
+ */
+void v_thc_save_cal(void)
+{
+  uint8_t ucBuff[64];
+
+  if (xIsSDCardFail == pdFALSE) {
+    sprintf((char*) &ucBuff[0],  "/sd%s/cal.thc", (char *) &ucCurrentFolderPathBuff[0]);
+
+    FILE *file = fopen((char *) &ucBuff[0], "wb");
+
+    x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_CAL;
+
+    fwrite(&x_thc_frame.x_header, 1, sizeof(x_thc_frame.x_header), file);
+    fwrite(x_thc_frame.puc_cal_data, 1, x_thc_frame.x_header.ul_cal_data_size, file);
+    fclose(file);
+  }
+}
+
 void writeFile(const char *path, uint8_t *pucData, uint32_t ulDataSize)
 {
  #if 0
   File file = SD.open(path, FILE_WRITE);
   
   if (file) {
+
     file.write(pucData, ulDataSize);
     file.close();
   }
 #else
-  FILE *file = fopen(path, "w");
+  FILE *file = fopen(path, "wb");
 
   if (file != NULL)  {
-    size_t err = fwrite(pucData, 1, ulDataSize, file);
+    x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_STILL;
+    
+    fwrite(&x_thc_frame.x_header, 1, sizeof(x_thc_frame.x_header), file);
+    fwrite(x_thc_frame.puc_frame_data, 1, x_thc_frame.x_header.ul_frame_data_size, file);
   }
 
   fclose(file);

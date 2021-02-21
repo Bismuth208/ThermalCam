@@ -3,7 +3,7 @@
 
 
 // ----------------------------------------------------------------------
-#define VERSION_STR "v0.3f"
+#define VERSION_STR "v0.4"
 #define OTA_STR     "OTA"
 
 
@@ -126,6 +126,38 @@ typedef enum {
 } IR_Palettes_t;
 
 // ----------------------------------------------------------------------
+
+#define THC_FRAME_DATA_VER  1
+
+enum {
+  THC_FRAME_DATA_TYPE_CAL = 1,  // calibration
+  THC_FRAME_DATA_TYPE_STILL,    // single frame
+  THC_FRAME_DATA_TYPE_MOV       // video (gif)
+};
+
+typedef struct {
+  union {
+    uint32_t ul_marker;
+    uint8_t uc_marker[4];
+  };
+  uint32_t ul_version;
+  uint32_t ul_size;
+  uint32_t ul_type;
+  uint32_t ul_reserved[12];
+  //uint32_t ul_num_frames;
+
+  uint32_t ul_cal_data_size;
+  uint32_t ul_frame_data_size;
+} thc_frame_header_t;
+
+typedef struct {
+  thc_frame_header_t x_header;
+
+  uint8_t *puc_cal_data;
+  uint8_t *puc_frame_data;
+} thc_frame_t;
+
+// ----------------------------------------------------------------------
 typedef void (*btn_poller_callabck_t) (BaseType_t xBtnState);
 
 typedef struct {
@@ -186,6 +218,8 @@ void vTakeScreenShoot(void *pvArg);
 // ----------------------------------------------------------------------
 void vGridInit(void);
 void vSDInit(void);
+void v_init_thc_struct(void);
+void v_thc_save_cal(void);
 
 void vGridSetPaletteType(uint32_t ulPaletteType);
 void vGridPlace(int px, int py, int w, int h);
