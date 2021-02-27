@@ -3,7 +3,7 @@
 
 
 // ----------------------------------------------------------------------
-#define VERSION_STR "v0.4"
+#define VERSION_STR "v0.4a"
 #define OTA_STR     "OTA"
 
 
@@ -127,7 +127,10 @@ typedef enum {
 
 // ----------------------------------------------------------------------
 
-#define THC_FRAME_DATA_VER  1
+#define THC_FRAME_DATA_VER     1
+
+// how much frames should be taken before STILL will be switche to MOV
+#define THC_MAX_FRAMES_FOR_MOV 4
 
 enum {
   THC_FRAME_DATA_TYPE_CAL = 1,  // calibration
@@ -220,6 +223,7 @@ void vGridInit(void);
 void vSDInit(void);
 void v_init_thc_struct(void);
 void v_thc_save_cal(void);
+void v_thc_check_frame_type(void);
 
 void vGridSetPaletteType(uint32_t ulPaletteType);
 void vGridPlace(int px, int py, int w, int h);

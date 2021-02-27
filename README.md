@@ -76,6 +76,13 @@ The end.
 
 ![TestSubject1 ](pics/test_showcase1.png "TestSubject1")
 
+***
+Knowing Issues:
+- If "mlx" folder is empty or doesn't exists then folder "./mlx/4294967295" is created;
+- If "mlx" folder contain one folder named for example "0046" then folder numbers starts from "0000";
+- Recording series of frames (gif video) to SD causes frames write slowdown;
+- Image corruption if shutter button is pressed repeatedly;
+
 
 > ## :exclamation: ATTENTION! :exclamation:
 >  * This project is still unstable and in develop! :beetle:

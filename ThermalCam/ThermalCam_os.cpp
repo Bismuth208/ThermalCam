@@ -10,6 +10,8 @@
 #include "common.h"
 #include "thermal_cam_pins.h"
 
+extern uint32_t ul_screenshots_taken;
+
 // ----------------------------------------------------------------------
 void vGetFrameDataTask(void *pvArg)
 {
@@ -71,6 +73,9 @@ void vAppMainTask(void *pvArg)
 
       if (xHiResBtnState == pdFALSE) { // low or aka pressed
         if ((millis() - ulLastScreenShot) > 100) { // 8 frames per sec
+          ++ul_screenshots_taken;
+          v_thc_check_frame_type();
+          
           vTakeScreenShoot(NULL);
   //        TakeScreenShotTimer.start(5000);
           
@@ -78,6 +83,9 @@ void vAppMainTask(void *pvArg)
   
           xNeedDelay = pdFALSE;
         }
+      } else {
+        ul_screenshots_taken = 0;
+        v_thc_check_frame_type();
       }
 
       if (xHiResBtnState != xGrid.xHiPrecisionModeIsEn) {

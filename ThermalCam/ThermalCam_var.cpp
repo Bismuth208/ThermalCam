@@ -22,6 +22,8 @@ float fMLX90640Oversampling[IR_ADC_OVERSAMPLING_COUNT][IR_SENSOR_DATA_FRAME_SIZE
 uint8_t ucBootProgress = 0;
 BaseType_t xIsSDCardFail = pdFALSE;
 
+uint32_t ul_screenshots_taken = 0;
+
 btn_poller_t xBtns[1] = {
   { 
     25, // ulPollTimeout

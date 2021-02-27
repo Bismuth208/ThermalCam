@@ -23,6 +23,8 @@ int16_t sSdBufTest[32 * 24];
 
 thc_frame_t x_thc_frame;
 
+extern uint32_t ul_screenshots_taken;
+
 // ----------------------------------------------------------------------
 void vSDInit(void)
 {
@@ -34,6 +36,8 @@ void vSDInit(void)
     if (!SD.exists("/mlx")) {
       SD.mkdir("/mlx");
     }
+
+    memset(&ucCurrentFolderPathBuff[0], 0x00, sizeof(ucCurrentFolderPathBuff));
 
     // i'm pretty sure what it never reach over9000 !!!
     sprintf((char *) &ucCurrentFolderPathBuff[0], "/mlx/%04u", ulTotalFolders);
@@ -88,12 +92,13 @@ void v_init_thc_struct(void)
  */
 void v_thc_save_cal(void)
 {
-  uint8_t ucBuff[64];
-
   if (xIsSDCardFail == pdFALSE) {
-    sprintf((char*) &ucBuff[0],  "/sd%s/cal.thc", (char *) &ucCurrentFolderPathBuff[0]);
+    uint8_t uc_thc_file_name[64];
 
-    FILE *file = fopen((char *) &ucBuff[0], "wb");
+    memset(&uc_thc_file_name[0], 0x00, sizeof(uc_thc_file_name));
+    sprintf((char*) &uc_thc_file_name[0],  "/sd%s/cal.thc", (char *) &ucCurrentFolderPathBuff[0]);
+
+    FILE *file = fopen((char *) &uc_thc_file_name[0], "wb");
 
     x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_CAL;
 
@@ -103,42 +108,47 @@ void v_thc_save_cal(void)
   }
 }
 
-void writeFile(const char *path, uint8_t *pucData, uint32_t ulDataSize)
+/*
+ * @brief Check for how log shutter butten is pressed and select proper mode
+ * @note this is temporal in future it will be replaced with vBtnPollerTask
+ */
+void v_thc_check_frame_type(void)
 {
- #if 0
-  File file = SD.open(path, FILE_WRITE);
-  
-  if (file) {
-
-    file.write(pucData, ulDataSize);
-    file.close();
+  if (ul_screenshots_taken > THC_MAX_FRAMES_FOR_MOV) {
+    x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_MOV;
+  } else {
+    x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_STILL;
   }
-#else
-  FILE *file = fopen(path, "wb");
+}
+
+/*
+ * @brief Based on lower and faster level of SD library
+ * @param *puc_dest_file - full path and name for file
+ */
+void v_thc_save_frame(const char *puc_dest_file)
+{
+  FILE *file = fopen(puc_dest_file, "wb");
 
   if (file != NULL)  {
-    x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_STILL;
-    
     fwrite(&x_thc_frame.x_header, 1, sizeof(x_thc_frame.x_header), file);
     fwrite(x_thc_frame.puc_frame_data, 1, x_thc_frame.x_header.ul_frame_data_size, file);
   }
 
   fclose(file);
-#endif
 }
 
 void vTakeScreenShoot(void *pvArg)
 {
   (void) pvArg;
 
-  uint8_t ucBuff[64];  // FIXME: create VLA buf based on file name and path
-
   if (xIsSDCardFail == pdFALSE) {
-    //sprintf((char *) &ucBuff[0], "%s/%05u.thc", (char *) &ucCurrentFolderPathBuff[0], ulTotalPics);
-    sprintf((char *) &ucBuff[0], "/sd%s/%05u.thc", (char *) &ucCurrentFolderPathBuff[0], ulTotalPics);
+    // FIXME: this is too long operation! Make most of it cached !
+    uint8_t uc_thc_file_name[64];
+
+    memset(&uc_thc_file_name[0], 0x00, sizeof(uc_thc_file_name));
+    sprintf((char *) &uc_thc_file_name[0], "/sd%s/%05u.thc", (char *) &ucCurrentFolderPathBuff[0], ulTotalPics);
     
-    writeFile((const char *) &ucBuff[0], (uint8_t *) &ucFrameBuffer[0], sizeof(ucFrameBuffer));
-    //writeFile((const char *) &ucBuff[0], (uint8_t *) &sSdBufTest[0], sizeof(sSdBufTest));
+    v_thc_save_frame((const char *) &uc_thc_file_name[0]);
 
     ++ulTotalPics;
 
