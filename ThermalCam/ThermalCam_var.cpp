@@ -23,6 +23,7 @@ uint8_t ucBootProgress = 0;
 BaseType_t xIsSDCardFail = pdFALSE;
 
 uint32_t ul_screenshots_taken = 0;
+uint32_t ul_mov_file_is_open = 0;
 
 btn_poller_t xBtns[1] = {
   { 
@@ -40,7 +41,7 @@ btn_poller_t xBtns[1] = {
 
 // ----------------------------------------------------------------------
 Task <4096>AppMainTask(vAppMainTask, OS_MCU_CORE_0);
-Task <2048>GetFrameDataTask(vGetFrameDataTask);
+Task <2048>GetFrameDataTask(vGetFrameDataTask, OS_MCU_CORE_1);
 //Task <2048>BtnPollerTask(vBtnPollerTask);
 
 //Timer TakeScreenShotTimer(vTakeScreenShoot);

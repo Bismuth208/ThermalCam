@@ -24,6 +24,9 @@ int16_t sSdBufTest[32 * 24];
 thc_frame_t x_thc_frame;
 
 extern uint32_t ul_screenshots_taken;
+extern uint32_t ul_mov_file_is_open;
+
+FILE *px_thc_file = NULL;
 
 // ----------------------------------------------------------------------
 void vSDInit(void)
@@ -94,8 +97,6 @@ void v_thc_save_cal(void)
 {
   if (xIsSDCardFail == pdFALSE) {
     uint8_t uc_thc_file_name[64];
-
-    memset(&uc_thc_file_name[0], 0x00, sizeof(uc_thc_file_name));
     sprintf((char*) &uc_thc_file_name[0],  "/sd%s/cal.thc", (char *) &ucCurrentFolderPathBuff[0]);
 
     FILE *file = fopen((char *) &uc_thc_file_name[0], "wb");
@@ -118,6 +119,11 @@ void v_thc_check_frame_type(void)
     x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_MOV;
   } else {
     x_thc_frame.x_header.ul_type = THC_FRAME_DATA_TYPE_STILL;
+
+    if (px_thc_file != NULL) {
+      fclose(px_thc_file);
+      px_thc_file = NULL;
+    }
   }
 }
 
@@ -127,14 +133,52 @@ void v_thc_check_frame_type(void)
  */
 void v_thc_save_frame(const char *puc_dest_file)
 {
-  FILE *file = fopen(puc_dest_file, "wb");
+  uint32_t ul_save_still = 0;
+  uint32_t ul_save_mov = 0;
 
-  if (file != NULL)  {
-    fwrite(&x_thc_frame.x_header, 1, sizeof(x_thc_frame.x_header), file);
-    fwrite(x_thc_frame.puc_frame_data, 1, x_thc_frame.x_header.ul_frame_data_size, file);
+  if (ul_mov_file_is_open == 1) {
+    if (x_thc_frame.x_header.ul_type == THC_FRAME_DATA_TYPE_MOV) {
+      // continue write
+      if (px_thc_file != NULL)  {
+        ul_save_mov = 1;
+      }
+    } else {
+      // close write
+      ul_mov_file_is_open = 0;
+      ul_save_still = 1;
+    }
+  } else {
+    if (x_thc_frame.x_header.ul_type == THC_FRAME_DATA_TYPE_MOV) {
+      // start write
+      px_thc_file = fopen(puc_dest_file, "wb");
+
+      if (px_thc_file != NULL)  {
+        ul_mov_file_is_open = 1;
+        ul_save_mov = 1;
+      }
+      
+    } else {
+      // write still 
+      ul_save_still = 1;
+    }
   }
 
-  fclose(file);
+
+  if (ul_save_still == 1) {
+    FILE *file = fopen(puc_dest_file, "wb");
+
+    if (file != NULL)  {
+      fwrite(&x_thc_frame.x_header, 1, sizeof(x_thc_frame.x_header), file);
+      fwrite(x_thc_frame.puc_frame_data, 1, x_thc_frame.x_header.ul_frame_data_size, file);
+    }
+  
+    fclose(file);
+  }
+
+  if ((ul_save_mov == 1) && (ul_mov_file_is_open == 1)) {
+    fwrite(&x_thc_frame.x_header, 1, sizeof(x_thc_frame.x_header), px_thc_file);
+    fwrite(x_thc_frame.puc_frame_data, 1, x_thc_frame.x_header.ul_frame_data_size, px_thc_file);
+  }
 }
 
 void vTakeScreenShoot(void *pvArg)
@@ -144,8 +188,6 @@ void vTakeScreenShoot(void *pvArg)
   if (xIsSDCardFail == pdFALSE) {
     // FIXME: this is too long operation! Make most of it cached !
     uint8_t uc_thc_file_name[64];
-
-    memset(&uc_thc_file_name[0], 0x00, sizeof(uc_thc_file_name));
     sprintf((char *) &uc_thc_file_name[0], "/sd%s/%05u.thc", (char *) &ucCurrentFolderPathBuff[0], ulTotalPics);
     
     v_thc_save_frame((const char *) &uc_thc_file_name[0]);

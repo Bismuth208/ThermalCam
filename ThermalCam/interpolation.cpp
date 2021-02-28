@@ -159,6 +159,9 @@ void IRAM_ATTR vGridFindMaxMinAvg(float f_high, float f_low)
   xGrid.fHigh = f_high;
   xGrid.fLow = f_low;
 #endif
+
+  xGrid.fLow = constrain(xGrid.fLow, -30, 300);
+  xGrid.fHigh = constrain(xGrid.fHigh, -30, 300);
 }
 
 void IRAM_ATTR vGridMakeAvg(void)
@@ -218,6 +221,11 @@ void IRAM_ATTR vGridInterpolate(void)
   int q = 0;
   int v = 0;
 
+  uint32_t ul_min_color = 0;
+  uint32_t ul_max_color = IR_CAM_MAX_COLORS;
+
+  //v_correct_range(&ul_min_color, &ul_max_color);
+
   // down frame clip
   for (int i = 0; i < (IR_SENSOR_MATRIX_2W * IR_SENSOR_MATRIX_2H - IR_SENSOR_MATRIX_2W); i++) {
     pix = 0;
@@ -229,7 +237,7 @@ void IRAM_ATTR vGridInterpolate(void)
       pix += fKernelWeights[z] * (float) xGrid.pfScreenData[sourceAddress + offset[q][z]];
     }
 
-    v = map_a(pix, xGrid.fLow, xGrid.fHigh, 0, IR_CAM_MAX_COLORS);
+    v = map_a(pix, xGrid.fLow, xGrid.fHigh, ul_min_color, ul_max_color);
 
     ucFrameBuffer[i] = constrain(v, 0, (IR_CAM_MAX_COLORS-1));
   }

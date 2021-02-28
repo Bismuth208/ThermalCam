@@ -3,7 +3,7 @@
 
 
 // ----------------------------------------------------------------------
-#define VERSION_STR "v0.4a"
+#define VERSION_STR "v0.4b"
 #define OTA_STR     "OTA"
 
 
@@ -127,7 +127,7 @@ typedef enum {
 
 // ----------------------------------------------------------------------
 
-#define THC_FRAME_DATA_VER     1
+#define THC_FRAME_DATA_VER     2
 
 // how much frames should be taken before STILL will be switche to MOV
 #define THC_MAX_FRAMES_FOR_MOV 4

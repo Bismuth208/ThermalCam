@@ -81,7 +81,7 @@ def create_rgb_pal():
 palette_ext_rgb = create_rgb_pal()
 
 # ------------------------------------------------------------------------ #
-THC_FRAME_VERSION_DATA = 1
+THC_FRAME_VERSION_DATA = 2
 
 THC_FRAME_DATA_TYPE_CAL = 1
 THC_FRAME_DATA_TYPE_STILL = 2
@@ -174,6 +174,10 @@ def read_header(raw_data):
     return header_data
 
 # ------------------------------------------------------------------------ #
+def convert_raw_image(raw_pic):
+    return create_pic(raw_pic[0][ THC_DATA_OFFSET : ])
+
+
 def convert_image(dest_path):
     raw_pic = get_file_data(dest_path)[ THC_DATA_OFFSET : ]
     return create_pic(raw_pic)
@@ -184,22 +188,18 @@ def transcode_image(dest_path):
     print(f'File {dest_path}.png')
 
 # ------------------------------------------------------------------------ #
-# Splits all gif frames to sublists for multiple gif files
-def group_consecutives(vals, step=1):
-    run = []
-    result = [run]
-    expect = None
+def split_mov_file(dest_path):
+    mov_frames = []
 
-    for v in vals:
-        if (v[-9 : -4] == expect) or (expect is None):
-            run.append(v)
-        else:
-            run = [v]
-            result.append(run)
+    raw_pic = get_file_data(dest_path)
+    header = read_header(raw_pic)
+    file_size =  header['frame_data_size'] + THC_DATA_OFFSET
 
-        expect = '%.5d' % (int(v[-9 : -4]) + int(step))
+    for offset in range(0, len(raw_pic), file_size):
+      sub_frame = [ raw_pic[offset : offset + file_size] ]
+      mov_frames.append( sub_frame )
 
-    return result
+    return mov_frames
 
 
 def sort_thc_files(files):
@@ -216,8 +216,6 @@ def sort_thc_files(files):
                 if (header['type'] == THC_FRAME_DATA_TYPE_MOV):
                     movs.append(file)
 
-    movs = group_consecutives(movs)
-
     return stills, movs
 
 # ------------------------------------------------------------------------ #
@@ -227,33 +225,27 @@ def create_stills(still_list):
             process = [executor.submit(transcode_image, file) for file in still_list]
 
 
-def create_movs(mov_lists, dest_path):
-    if len(mov_lists) > 0:
-        img_gif_num = 0
+def create_movs(mov_list, dest_path):
+    if len(mov_list) > 0:
 
-        for mov_list in mov_lists:
-            if len(mov_list) < 2:
-                create_stills(mov_list)
-                pass
-
+        for mov_file in mov_list:
             # now load all frames
             images = []
+            img_frames = split_mov_file(mov_file)
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
-              images = [result for result in executor.map(convert_image, mov_list)]
+              images = [result for result in executor.map(convert_raw_image, img_frames)]
 
-            # len(scanned_files) FIXME: god damn! make some magic! you know...
+            # FIXME: god damn! make some magic! you know...
             # MAGIC!!
-            gif_duration = 140
+            gif_duration = 140 # header['prev_frame_time']
 
-            gif_str_num = '/%.5d.thc.gif' % img_gif_num;
-            file_name = os.path.dirname(dest_path) + gif_str_num
+            file_name =  mov_file[ : - 4] + '.thc.gif' #os.path.dirname(dest_path) + gif_str_num
 
             images[0].save(fp=file_name, format='GIF', append_images=images[1:],
                    save_all=True, duration=gif_duration, loop=0)
 
             print(f'File {file_name}')
-            img_gif_num += 1
 
 # ------------------------------------------------------------------------ #
 def main():
@@ -280,6 +272,7 @@ def main():
 
         create_stills(still_list)
         create_movs(mov_lists, in_file_path)
+
     else:
         print(f'Dir {in_file_path} not found.')
 
