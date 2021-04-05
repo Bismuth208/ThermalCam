@@ -41,8 +41,8 @@ void setup()
   tft.drawRect(1, 1, tft.width()-2, tft.height()-2, ST7735_WHITE);
 //  tft.setTextColor(ST7735_WHITE);
   tft.setTextSize(2);
-  vPrintAt(20, 50, "Maaagic");
-  vPrintAt(46, 68, "Thermal");
+  vPrintAt(20, 52, "Maaagic");
+  vPrintAt(46, 70, "Thermal");
 
   tft.setTextSize(1);
 

@@ -3,7 +3,7 @@
 
 
 // ----------------------------------------------------------------------
-#define VERSION_STR "v0.4b"
+#define VERSION_STR "v0.4c"
 #define OTA_STR     "OTA"
 
 

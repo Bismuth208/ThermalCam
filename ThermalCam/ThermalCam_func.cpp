@@ -42,7 +42,7 @@ void vDrawLogo(void)
   const uint8_t *pucPic = &Duck_logo_Iron_Gradient_data[0];
 
   tft.startWrite();
-  tft.setAddrWindow(105, 35, DUCK_LOGO_W, DUCK_LOGO_H);
+  tft.setAddrWindow(DUCK_LOGO_POS_X, DUCK_LOGO_POS_Y, DUCK_LOGO_W, DUCK_LOGO_H);
   tft.endWrite();
   
   for (uint32_t i = 0; i < DUCK_LOGO_SIZE; i += 3) {
@@ -51,7 +51,7 @@ void vDrawLogo(void)
     tft.pushColor(usColor);
   }
 #else
-  tft.drawRGBBitmap(105, 35, &Duck_logo_Iron_Gradient_data[0], DUCK_LOGO_W, DUCK_LOGO_H);
+  tft.drawRGBBitmap(DUCK_LOGO_POS_X, DUCK_LOGO_POS_Y, &Duck_logo_Iron_Gradient_data[0], DUCK_LOGO_W, DUCK_LOGO_H);
 #endif
 }
 
