@@ -1,27 +1,10 @@
 // ----------------------------------------------------------------------
-
-#include <WiFi.h>
-#include <SPI.h>
-#include <Wire.h>
-
 #include "common.h"
-#include "thermal_cam_pins.h"
-
-#include "Duck_logo_Iron_Gradient.h"
-
+#include "common_pics.h"
+#include "ir_sensor.h"
+#include "pins_definitions.h"
 
 // ----------------------------------------------------------------------
-// Arduino like analogWrite
-// value has to be between 0 and valueMax
-void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax)
-{
-  // calculate duty, 8191 from 2 ^ 13 - 1
-  uint32_t duty = (8191 / valueMax) * min(value, valueMax);
-
-  // write duty to LEDC
-  ledcWrite(channel, duty);
-}
-
 void vPrintAt(uint32_t ulPosX, uint32_t ulPosY, const char *pucText)
 {
   tft.setCursor(ulPosX, ulPosY);
@@ -53,41 +36,6 @@ void vDrawLogo(void)
 #else
   tft.drawRGBBitmap(DUCK_LOGO_POS_X, DUCK_LOGO_POS_Y, &Duck_logo_Iron_Gradient_data[0], DUCK_LOGO_W, DUCK_LOGO_H);
 #endif
-}
-
-// ----------------------------------------------------------------------
-void vMLX90640_EnableHiQualityMode(BaseType_t xEnable)
-{
-  MLX90640_SetRefreshRate(IR_SENSOR_I2C_ADDR, (xEnable == pdFALSE) ? IR_SAMPLING_HI_Q : IR_SAMPLING_LOW_Q);
-  MLX90640_SetResolution(IR_SENSOR_I2C_ADDR, (xEnable == pdFALSE) ? IR_SAMPLING_RES_HI_Q : IR_SAMPLING_RES_LOW_Q);
-
-  xGrid.xHiPrecisionModeIsEn = xEnable;
-}
-
-void vMLX90640_GetDataFrame(IrCamDataFrame_t *pxIrCamDataFrame)
-{
-  //  float vdd = 0;
-  float Ta = 0;
-  float tr = -8; //Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
-  
-  for (uint32_t i = 0; i < IR_CAM_DATA_FRAMES; i++) { // read both subpages
-    MLX90640_GetFrameData(IR_SENSOR_I2C_ADDR, &pxIrCamDataFrame->mlx90640Frame[0]);
-
-//      vdd = MLX90640_GetVdd(&pxIrCamDataFrame->mlx90640Frame[0], &x_mlx90640);
-    Ta = MLX90640_GetTa(&pxIrCamDataFrame->mlx90640Frame[0], &x_mlx90640);
-    tr = Ta - TA_SHIFT;
-
-//      MLX90640_BadPixelsCorrection(&mlx90640.brokenPixels[0], &fMLX90640Oversampling[xGrid.ulOversamplingPos][0], 1, &x_mlx90640);
-//      MLX90640_BadPixelsCorrection(&mlx90640.outlierPixels[0], &fMLX90640Oversampling[xGrid.ulOversamplingPos][0], 1, &x_mlx90640);
-
-    MLX90640_CalculateTo(&pxIrCamDataFrame->mlx90640Frame[0], &x_mlx90640, xGrid.fEmissivity, tr, &fMLX90640Oversampling[xGrid.ulOversamplingPos][0]);
-  }
-
-  // now move ONLY here to read subpages propertly
-  ++( xGrid.ulOversamplingPos );
-  if (xGrid.ulOversamplingPos >= IR_ADC_OVERSAMPLING_COUNT) {
-    xGrid.ulOversamplingPos = 0;
-  }
 }
 
 // ----------------------------------------------------------------------
@@ -133,7 +81,7 @@ void vDrawInterpolated(void)
 
 void vDrawMeasurement(void)
 {
-  tft.drawCircle(80, 50, 4, ST7735_WHITE);
+  tft.drawCircle(80, 50, 4, COLOR_WHITE);
 
   vPrintAt(5, 102, "L");
   vPrintAt(12, 102, xGrid.fLow);
@@ -155,9 +103,10 @@ void vDrawMeasurement(void)
 // Immitation of serious work
 void vDrawProgressBar(uint32_t ulState)
 {
-  tft.drawRect(20, 100, GUI_PROGRESS_BAR_STEP_SIZE * (ulState + 1), 8, ST7735_WHITE);
+  tft.drawRect(20, 100, GUI_PROGRESS_BAR_STEP_SIZE * (ulState + 1), 8, COLOR_WHITE);
 }
 
+// ----------------------------------------------------------------------
 void vStartColdReadings(IrCamDataFrame_t *pxIrCamDataFrame)
 {
   float tr = -8; //Ta - TA_SHIFT; //Reflected temperature based on the sensor ambient temperature
@@ -169,10 +118,4 @@ void vStartColdReadings(IrCamDataFrame_t *pxIrCamDataFrame)
 
   // FIXME: remove this one by oversamplng read
   Task<0>::delay(GUI_BOOT_LOGO_DELAY); // yeees...
-}
-
-// ----------------------------------------------------------------------
-void vTakeSreenShotFlag(BaseType_t xBtnState)
-{
-  
 }

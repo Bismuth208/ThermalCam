@@ -1,11 +1,5 @@
 // ----------------------------------------------------------------------
-
 #include <WiFi.h>
-#include <SPI.h>
-#include <Wire.h>
-
-//#include <FS.h>
-//#include <SD.h>
 
 #include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
@@ -13,7 +7,6 @@
 #include <Update.h>
 
 #include "common.h"
-#include "thermal_cam_pins.h"
 
 AsyncWebServer server(80);
 

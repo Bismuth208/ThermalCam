@@ -8,6 +8,7 @@
  */
 
 #include "common.h"
+#include "ir_sensor.h"
 #include "ironbow_palette.h"
 
 // ----------------------------------------------------------------------

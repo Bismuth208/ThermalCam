@@ -1,15 +1,14 @@
 // ----------------------------------------------------------------------
-
-#include <WiFi.h>
-#include <SPI.h>
-#include <Wire.h>
-
 #include <FS.h>
 #include <SD.h>
 
 #include "common.h"
-#include "thermal_cam_pins.h"
+#include "ir_sensor.h"
+#include "pins_definitions.h"
 
+#include "sd_writer.h"
+
+// ----------------------------------------------------------------------
 uint32_t ulTotalPics = 0;
 uint32_t ulTotalFolders = 0;
 
@@ -23,10 +22,13 @@ int16_t sSdBufTest[32 * 24];
 
 thc_frame_t x_thc_frame;
 
+FILE *px_thc_file = NULL;
+
+//Timer TakeScreenShotTimer(vTakeScreenShoot);
+Counter <1> ScreenShootRdyCounter;
+
 extern uint32_t ul_screenshots_taken;
 extern uint32_t ul_mov_file_is_open;
-
-FILE *px_thc_file = NULL;
 
 // ----------------------------------------------------------------------
 void vSDInit(void)
@@ -95,8 +97,9 @@ void v_init_thc_struct(void)
  */
 void v_thc_save_cal(void)
 {
+  uint8_t uc_thc_file_name[64];
+  
   if (xIsSDCardFail == pdFALSE) {
-    uint8_t uc_thc_file_name[64];
     sprintf((char*) &uc_thc_file_name[0],  "/sd%s/cal.thc", (char *) &ucCurrentFolderPathBuff[0]);
 
     FILE *file = fopen((char *) &uc_thc_file_name[0], "wb");
@@ -200,12 +203,19 @@ void vTakeScreenShoot(void *pvArg)
   }
 }
 
+void vTakeSreenShotFlag(BaseType_t xBtnState)
+{
+  
+}
+
+/*
+ * @brief Draw on screen amount of sreenshots/videos taken
+ */
 void vPrintSDStats(void)
 {
   uint8_t ucBuff[32];
   
   if (xIsSDCardFail == pdFALSE) {
-
     sprintf((char *) &ucBuff[0], "SD %04u", ulTotalPics);
     
     vPrintAt(75, 116, (const char *) &ucBuff[0]); 

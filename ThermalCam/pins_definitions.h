@@ -3,8 +3,8 @@
  * 
  */
 
-#ifndef _thermal_cam_pins_H
-#define _thermal_cam_pins_H
+#ifndef _PINS_DEFINITIONS_H
+#define _PINS_DEFINITIONS_H
 
 
 // ----------------------------------------------------------------------
@@ -16,11 +16,11 @@
 #define TFT_CS_PIN             4  // IO4
 #define TFT_DC_PIN             5  // IO5
 #define TFT_SD_CS_PIN         13  // IO13
+//#define TFT_RST_PIN           EN  // ESP EN/RST
 // ----------------------------------------------------------------------
 // hardware VSPI
 //#define TFT_MOSI_PIN          23  // IO23
 //#define TFT_CLK_PIN           18  // IO18
-//#define TFT_RST_PIN           EN  // ESP EN/RST
 //#define TFT_MISO_PIN          19  // IO19
 // ----------------------------------------------------------------------
 #define OPT_KEY1_PIN           25  // IO25
@@ -33,6 +33,4 @@
 
 // ----------------------------------------------------------------------
 
-
-
-#endif /* _thermal_cam_pins_H */
+#endif /* _PINS_DEFINITIONS_H */

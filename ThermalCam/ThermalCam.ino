@@ -2,16 +2,18 @@
 
 #include <WiFi.h>
 #include <SPI.h>
-#include <Wire.h>
 
 #include <FS.h>
 #include <SD.h>
 
 #include <SPIFFS.h>
 
-
 #include "common.h"
-#include "thermal_cam_pins.h"
+#include "ir_sensor.h"
+#include "sd_writer.h"
+#include "pins_definitions.h"
+
+extern uint32_t ul_screenshots_taken;
 
 // ----------------------------------------------------------------------
 void setup()
@@ -26,30 +28,35 @@ void setup()
 
   // ----------------------------------------------------------------------
   pinMode(OPT_KEY1_PIN, INPUT_PULLUP);
+//  pinMode(OPT_KEY2_PIN, INPUT_PULLUP);
+//  pinMode(OPT_KEY3_PIN, INPUT_PULLUP);
   
   // ----------------------------------------------------------------------
   // Init TFT chip
-//  tft.begin();
+#ifdef _ADAFRUIT_ILI9341H_
+  tft.begin();
+#else
   tft.initR(INITR_BLACKTAB);
+#endif
   
-  tft.fillScreen(ST7735_BLACK);
+  tft.fillScreen(COLOR_BLACK);
   tft.setRotation(1);
-  tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+  tft.setTextColor(COLOR_WHITE, COLOR_BLACK);
 
   // ----------------------------------------------------------------------
   // Boot logo...
-  tft.drawRect(1, 1, tft.width()-2, tft.height()-2, ST7735_WHITE);
-//  tft.setTextColor(ST7735_WHITE);
-  tft.setTextSize(2);
-  vPrintAt(20, 52, "Maaagic");
-  vPrintAt(46, 70, "Thermal");
-
-  tft.setTextSize(1);
-
-  vPrintAt(100, 90, VERSION_STR); // version build
+  tft.drawRect(1, 1, tft.width()-2, tft.height()-2, COLOR_WHITE);
 
   vDrawLogo();
+  
+  tft.setTextSize(2);
+  vPrintAt(15, 50, "ThermalCam");
+  
+  tft.setTextSize(1);
+  vPrintAt(100, 90, VERSION_STR); // version build
 
+  // ----------------------------------------------------------------------
+  // check for OTA
   if (digitalRead(OPT_KEY1_PIN) == LOW) {
     AppMainTask.stop();
     GetFrameDataTask.stop();
@@ -91,37 +98,8 @@ void normal_init(void)
   // ----------------------------------------------------------------------
   vDrawProgressBar(ucBootProgress);
   ++ucBootProgress;
-  
-  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, 400000); //SDA, SCL and increase I2C clock speed to 400kHz
-  
-  /*
-    if (isConnected() == false)
-    {
-      Serial.println("MLX90640 not detected at default I2C address. Please check wiring. Freezing.");
-      while (1);
-    }
-  */
-  //Get device parameters - We only have to do this once
-  int status;
-  
-  status = MLX90640_DumpEE(IR_SENSOR_I2C_ADDR, &x_mlx90640Frame.mlx90640Frame[0]);
-  if (status != 0) {
-    Serial.printf("Failed to load system parameters %d \n", status);
-  }
 
-  status = MLX90640_ExtractParameters(&x_mlx90640Frame.mlx90640Frame[0], &x_mlx90640);
-  if (status != 0) {
-    Serial.printf("Parameter extraction failed %d \n", status);
-  }
-
-  // Once params are extracted
-  // we can release eeMLX90640 array and we can increase to 800kHz
-  Wire.setClock(800000);
-
-  v_thc_save_cal();
-
-  vMLX90640_EnableHiQualityMode(pdTRUE);
-//  Serial.printf("Cur res %d\n", MLX90640_GetCurResolution(IR_SENSOR_I2C_ADDR));
+  vInitSensor();
 
   // ----------------------------------------------------------------------
   vDrawProgressBar(ucBootProgress);
@@ -138,4 +116,102 @@ void normal_init(void)
   GetFrameDataTask.emitSignal();
 
   Serial.print("Ok!\n");
+}
+
+// ----------------------------------------------------------------------
+// Arduino like analogWrite
+// value has to be between 0 and valueMax
+void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax)
+{
+  // calculate duty, 8191 from 2 ^ 13 - 1
+  uint32_t duty = (8191 / valueMax) * min(value, valueMax);
+
+  // write duty to LEDC
+  ledcWrite(channel, duty);
+}
+
+
+// ----------------------------------------------------------------------
+void vAppMainTask(void *pvArg)
+{
+  (void) pvArg;
+
+  BaseType_t xHiResBtnState = pdFALSE;
+  // Compensate SD write time to get next MLX90640 frame faster
+  // By default pdTRUE
+  BaseType_t xNeedDelay = pdTRUE;
+
+  // Wait here untill MLX sensor wiil be initialised
+  AppMainTask.waitSignal();
+
+  // Remove progress bar
+  tft.fillRect(20, 100, GUI_PROGRESS_BAR_STEP_SIZE * (IR_SENSOR_COLD_READS_NUM + 1), 8, COLOR_BLACK);
+  // Draw frame to split thermal image visually from rest of UI
+  tft.drawRect(xGrid.ulScreenX, xGrid.ulScreenY, IR_SENSOR_MATRIX_2W * 2 + 4, IR_SENSOR_MATRIX_2H * 2, COLOR_WHITE);
+
+  uint32_t ulLastScreenShot = 0;
+  
+  for (;;) {
+    xHiResBtnState = (BaseType_t) digitalRead(OPT_KEY1_PIN);
+    
+    if (mlx90640FrameRdyCounter.take(1)) {
+      // Draw everything
+      MLX90640Mutex.lock();
+      
+      vDrawInterpolated();
+      vDrawMeasurement();
+
+      if (xHiResBtnState == pdFALSE) { // low or aka pressed
+        if ((millis() - ulLastScreenShot) > 100) { // 8 frames per sec
+          ++ul_screenshots_taken;
+          v_thc_check_frame_type();
+          
+          vTakeScreenShoot(NULL);
+  //        TakeScreenShotTimer.start(5000);
+          
+          ulLastScreenShot = millis();
+          xNeedDelay = pdFALSE;
+        }
+      } else {
+        ul_screenshots_taken = 0;
+        v_thc_check_frame_type();
+      }
+
+      if (xHiResBtnState != xGrid.xHiPrecisionModeIsEn) {
+        vMLX90640_EnableHiQualityMode(xHiResBtnState);
+      }
+
+      MLX90640Mutex.unlock();
+    }
+    
+    if (xNeedDelay == pdTRUE) {
+      Task<0>::delay(25);
+    } else {
+      Task<0>::delay(1);
+    }
+  }
+}
+
+void vBtnPollerTask(void *pvArg)
+{
+  (void) pvArg;
+
+  for (;;) {
+    for (auto &xBtn : xBtns) {
+     if ((millis() - xBtn.ulLastPollTimeout) >= xBtn.ulPollTimeout) {
+        xBtn.xCurState = (BaseType_t) digitalRead(xBtn.ilBtn);
+
+        if (xBtn.xCurState != xBtn.xPrevState) {
+          xBtn.xPrevState = xBtn.xCurState;
+        } else {
+          if (xBtn.pvfxCallback != NULL) {
+            xBtn.pvfxCallback(xBtn.xCurState);
+            xBtn.ulLastPollTimeout = millis();
+          }
+        }
+      } 
+    }
+
+    Task<0>::delay(1);
+  }
 }
